@@ -1,39 +1,21 @@
-"""Primary entry point for Project ATLAS."""
+"""Command-line entry point for Project ATLAS."""
 
-from datetime import datetime
+from atlas.config.settings import load_settings
+from atlas.core.app import AtlasApp
+from atlas.models.base import ModelError
+from atlas.models.factory import create_model_provider
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.1.0"
+ATLAS_VERSION = "0.2.0"
+EXIT_COMMANDS = {"exit", "quit", "shutdown"}
 
 
-def create_response(user_message: str) -> str:
-    """Create a temporary rule-based response.
-
-    This function will later be replaced by ATLAS's model interface.
-    """
-    normalized_message = user_message.strip().lower()
-
-    if not normalized_message:
-        return "I did not receive a message."
-
-    if normalized_message in {"hello", "hi", "hey"}:
-        return "Hello, Victoria. ATLAS is online."
-
-    if "time" in normalized_message:
-        current_time = datetime.now().strftime("%I:%M %p")
-        return f"The current local time is {current_time}."
-
-    if normalized_message in {"exit", "quit", "shutdown"}:
-        return "Shutting down the current ATLAS session."
-
-    return f"I received your message: {user_message}"
-
-
-def main() -> None:
-    """Start the ATLAS command-line interface."""
+def run_cli(app: AtlasApp) -> None:
+    """Run the interactive ATLAS command-line interface."""
     print("=" * 50)
     print(f"{ATLAS_NAME} v{ATLAS_VERSION}")
     print("Personal AI Operating System")
+    print(f"Model provider: {app.provider_name}")
     print("=" * 50)
     print("Type 'exit' to close the session.\n")
 
@@ -44,11 +26,30 @@ def main() -> None:
             print("\nATLAS: Session interrupted. Shutting down.")
             break
 
-        response = create_response(user_message)
+        if user_message.lower() in EXIT_COMMANDS:
+            print("ATLAS: Shutting down the current ATLAS session.")
+            break
+
+        try:
+            response = app.process_message(user_message)
+        except ModelError as error:
+            print(f"ATLAS ERROR: {error}\n")
+            continue
+
         print(f"ATLAS: {response}\n")
 
-        if user_message.lower() in {"exit", "quit", "shutdown"}:
-            break
+
+def main() -> None:
+    """Configure and start Project ATLAS."""
+    try:
+        settings = load_settings()
+        provider = create_model_provider(settings)
+        app = AtlasApp(model_provider=provider)
+    except ModelError as error:
+        print(f"ATLAS STARTUP ERROR: {error}")
+        return
+
+    run_cli(app)
 
 
 if __name__ == "__main__":

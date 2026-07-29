@@ -1,24 +1,16 @@
-"""Tests for the initial ATLAS command-line interface."""
+"""Basic tests for the ATLAS command-line module."""
 
-from atlas.main import create_response
-
-
-def test_greeting_response() -> None:
-    """ATLAS should identify itself when greeted."""
-    response = create_response("hello")
-
-    assert response == "Hello, Victoria. ATLAS is online."
+from atlas.main import ATLAS_NAME, ATLAS_VERSION, EXIT_COMMANDS
 
 
-def test_empty_message_response() -> None:
-    """ATLAS should handle empty input safely."""
-    response = create_response("   ")
+def test_application_identity() -> None:
+    """ATLAS should expose its application identity."""
+    assert ATLAS_NAME == "ATLAS"
+    assert ATLAS_VERSION == "0.2.0"
 
-    assert response == "I did not receive a message."
 
-
-def test_unknown_message_is_acknowledged() -> None:
-    """ATLAS should acknowledge messages it cannot yet process."""
-    response = create_response("Explain orbital mechanics")
-
-    assert response == "I received your message: Explain orbital mechanics"
+def test_exit_commands() -> None:
+    """ATLAS should recognize supported shutdown commands."""
+    assert "exit" in EXIT_COMMANDS
+    assert "quit" in EXIT_COMMANDS
+    assert "shutdown" in EXIT_COMMANDS
