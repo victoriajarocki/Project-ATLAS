@@ -1,0 +1,40 @@
+# Python virtual environment
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables and secrets
+.env
+.env.local
+
+# Local ATLAS data
+data/*
+!data/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# Test and coverage files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type-checking and linting caches
+.mypy_cache/
+.ruff_cache/
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# VS Code local settings
+.vscode/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
