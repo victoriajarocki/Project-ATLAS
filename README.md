@@ -208,7 +208,7 @@ LICENSE
 Clone the repository.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Project-ATLAS.git
+git clone https://github.com/jarockivictoria/Project-ATLAS.git
 ```
 
 Enter the project directory.
@@ -275,13 +275,15 @@ pytest
 
 # Documentation
 
-Additional project documentation is available in:
+Detailed project documentation is available in:
 
-- `ROADMAP.md`
-- `ARCHITECTURE.md`
-- `CHANGELOG.md`
-
-More documentation will be added as the project grows.
+- [Installation Guide](docs/installation.md)
+- [Development Guide](docs/development.md)
+- [Configuration Reference](docs/configuration.md)
+- [Tool System](docs/tools.md)
+- [Architecture](ARCHITECTURE.md)
+- [Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
 
 ---
 
