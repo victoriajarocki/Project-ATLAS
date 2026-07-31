@@ -24,6 +24,10 @@ def create_test_settings(
         openai_api_key=openai_api_key,
         ollama_host="http://localhost:11434",
         memory_database_path=Path("data/test_memory.db"),
+        log_directory=Path("logs"),
+        log_level="INFO",
+        log_max_bytes=5_000_000,
+        log_backup_count=5,
     )
 
 

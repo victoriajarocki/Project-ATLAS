@@ -6,7 +6,7 @@ from atlas.main import ATLAS_NAME, ATLAS_VERSION, EXIT_COMMANDS
 def test_application_identity() -> None:
     """ATLAS should expose its application identity."""
     assert ATLAS_NAME == "ATLAS"
-    assert ATLAS_VERSION == "0.5.0"
+    assert ATLAS_VERSION == "0.6.0"
 
 
 def test_exit_commands() -> None:

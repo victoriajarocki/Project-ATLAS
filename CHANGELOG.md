@@ -14,14 +14,53 @@ The project follows semantic versioning:
 
 ### Planned
 
+- Security and permission system
+- Action confirmation policies
+- Tool interface and registry
 - Automatic conversation titles
 - Conversation summaries
-- Context-window token management
-- Structured application logging
 - Semantic memory retrieval
-- Memory editing and categorization commands
 
 ---
+
+## [0.6.0] - 2026-07-31
+
+### Added
+
+- Structured application logging
+- Rotating local log files
+- Unique request IDs
+- Request-scoped log context
+- Request execution timing
+- Model-response completion logs
+- Application startup and shutdown logs
+- Memory-operation audit entries
+- Conversation-operation audit entries
+- Configurable log levels
+- Configurable log rotation limits
+- Unit tests for logging configuration and request context
+
+### Changed
+
+- Extended environment configuration with logging settings
+- Added subsystem initialization logs
+- Added centralized exception logging
+- Updated the project version to 0.6.0
+
+### Security
+
+- Logs remain local and excluded from Git
+- Full user messages are not written to application logs
+- Memory contents are not written to application logs
+- Conversation contents are not written to application logs
+- Request identifiers contain no personal information
+
+### Notes
+
+- Default logs are stored in `logs/atlas.log`.
+- Default log level is `INFO`.
+- Log files rotate after approximately 5 MB.
+- Five rotated log backups are retained by default.
 
 ## [0.5.0] - 2026-07-31
 

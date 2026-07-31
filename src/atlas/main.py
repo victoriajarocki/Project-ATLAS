@@ -1,6 +1,8 @@
 """Command-line entry point for Project ATLAS."""
 
-from atlas.config.settings import load_settings
+import logging
+
+from atlas.config.settings import Settings, load_settings
 from atlas.conversations.database import (
     ConversationDatabaseError,
     SQLiteConversationRepository,
@@ -14,10 +16,16 @@ from atlas.memory.database import (
 from atlas.memory.service import MemoryService
 from atlas.models.base import ModelError
 from atlas.models.factory import create_model_provider
+from atlas.observability.logging import (
+    LoggingConfigurationError,
+    configure_logging,
+)
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.5.0"
+ATLAS_VERSION = "0.6.0"
 EXIT_COMMANDS = {"exit", "quit", "shutdown"}
+
+logger = logging.getLogger(__name__)
 
 
 def run_cli(app: AtlasApp) -> None:
@@ -47,14 +55,18 @@ def run_cli(app: AtlasApp) -> None:
     print("  exit")
     print()
 
+    logger.info("ATLAS command-line interface started.")
+
     while True:
         try:
             user_message = input("You: ").strip()
         except (EOFError, KeyboardInterrupt):
+            logger.info("ATLAS session interrupted by the user.")
             print("\nATLAS: Session interrupted. Shutting down.")
             break
 
         if user_message.lower() in EXIT_COMMANDS:
+            logger.info("ATLAS shutdown command received.")
             print("ATLAS: Shutting down the current ATLAS session.")
             break
 
@@ -63,21 +75,35 @@ def run_cli(app: AtlasApp) -> None:
         except (
             ModelError,
             ConversationDatabaseError,
+            MemoryDatabaseError,
         ) as error:
+            logger.exception("ATLAS request failed in the CLI.")
             print(f"ATLAS ERROR: {error}\n")
             continue
 
         print(f"ATLAS: {response}\n")
 
+    logger.info("ATLAS command-line interface stopped.")
 
-def create_app() -> AtlasApp:
-    """Configure and create the ATLAS application."""
-    settings = load_settings()
+
+def create_app(settings: Settings) -> AtlasApp:
+    """Create ATLAS using validated application settings."""
+    logger.info(
+        "Creating ATLAS application. provider=%s model=%s",
+        settings.provider,
+        settings.model,
+    )
+
     provider = create_model_provider(settings)
 
     memory_repository = SQLiteMemoryRepository(database_path=settings.memory_database_path)
     memory_service = MemoryService(memory_repository)
     memory_service.initialize()
+
+    logger.info(
+        "Persistent memory initialized. database=%s",
+        settings.memory_database_path,
+    )
 
     conversation_repository = SQLiteConversationRepository(
         database_path=settings.memory_database_path
@@ -85,26 +111,51 @@ def create_app() -> AtlasApp:
     conversation_service = ConversationService(conversation_repository)
     conversation_service.initialize()
 
-    return AtlasApp(
+    logger.info("Conversation sessions initialized.")
+
+    app = AtlasApp(
         model_provider=provider,
         memory_service=memory_service,
         conversation_service=conversation_service,
     )
 
+    logger.info("ATLAS application created successfully.")
+
+    return app
+
 
 def main() -> None:
     """Configure and start Project ATLAS."""
     try:
-        app = create_app()
+        settings = load_settings()
+
+        log_file = configure_logging(
+            log_directory=settings.log_directory,
+            log_level=settings.log_level,
+            max_bytes=settings.log_max_bytes,
+            backup_count=settings.log_backup_count,
+        )
+
+        logger.info(
+            "Starting %s v%s. log_file=%s",
+            ATLAS_NAME,
+            ATLAS_VERSION,
+            log_file,
+        )
+
+        app = create_app(settings)
+        run_cli(app)
     except (
         ModelError,
         MemoryDatabaseError,
         ConversationDatabaseError,
+        LoggingConfigurationError,
     ) as error:
+        logger.exception("ATLAS startup failed.")
         print(f"ATLAS STARTUP ERROR: {error}")
         return
-
-    run_cli(app)
+    finally:
+        logging.shutdown()
 
 
 if __name__ == "__main__":
