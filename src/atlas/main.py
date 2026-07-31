@@ -1,6 +1,11 @@
 """Command-line entry point for Project ATLAS."""
 
 from atlas.config.settings import load_settings
+from atlas.conversations.database import (
+    ConversationDatabaseError,
+    SQLiteConversationRepository,
+)
+from atlas.conversations.service import ConversationService
 from atlas.core.app import AtlasApp
 from atlas.memory.database import (
     MemoryDatabaseError,
@@ -11,7 +16,7 @@ from atlas.models.base import ModelError
 from atlas.models.factory import create_model_provider
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.4.0"
+ATLAS_VERSION = "0.5.0"
 EXIT_COMMANDS = {"exit", "quit", "shutdown"}
 
 
@@ -22,11 +27,23 @@ def run_cli(app: AtlasApp) -> None:
     print("Personal AI Operating System")
     print(f"Model provider: {app.provider_name}")
     print(f"Persistent memory: {'Enabled' if app.memory_enabled else 'Disabled'}")
+    print(f"Conversation sessions: {'Enabled' if app.conversations_enabled else 'Disabled'}")
+
+    if app.active_conversation_id is not None:
+        print(f"Active chat: {app.active_conversation_id}")
+
     print("=" * 50)
-    print("Commands:")
+    print("Memory commands:")
     print("  remember <information>")
     print("  memories")
     print("  forget <memory ID>")
+    print()
+    print("Conversation commands:")
+    print("  new chat [title]")
+    print("  chats")
+    print("  use chat <chat ID>")
+    print("  rename chat <new title>")
+    print("  history")
     print("  exit")
     print()
 
@@ -43,7 +60,10 @@ def run_cli(app: AtlasApp) -> None:
 
         try:
             response = app.process_message(user_message)
-        except ModelError as error:
+        except (
+            ModelError,
+            ConversationDatabaseError,
+        ) as error:
             print(f"ATLAS ERROR: {error}\n")
             continue
 
@@ -53,17 +73,22 @@ def run_cli(app: AtlasApp) -> None:
 def create_app() -> AtlasApp:
     """Configure and create the ATLAS application."""
     settings = load_settings()
-
     provider = create_model_provider(settings)
 
-    repository = SQLiteMemoryRepository(database_path=settings.memory_database_path)
-
-    memory_service = MemoryService(repository)
+    memory_repository = SQLiteMemoryRepository(database_path=settings.memory_database_path)
+    memory_service = MemoryService(memory_repository)
     memory_service.initialize()
+
+    conversation_repository = SQLiteConversationRepository(
+        database_path=settings.memory_database_path
+    )
+    conversation_service = ConversationService(conversation_repository)
+    conversation_service.initialize()
 
     return AtlasApp(
         model_provider=provider,
         memory_service=memory_service,
+        conversation_service=conversation_service,
     )
 
 
@@ -71,7 +96,11 @@ def main() -> None:
     """Configure and start Project ATLAS."""
     try:
         app = create_app()
-    except (ModelError, MemoryDatabaseError) as error:
+    except (
+        ModelError,
+        MemoryDatabaseError,
+        ConversationDatabaseError,
+    ) as error:
         print(f"ATLAS STARTUP ERROR: {error}")
         return
 

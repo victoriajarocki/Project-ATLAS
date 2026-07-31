@@ -14,14 +14,50 @@ The project follows semantic versioning:
 
 ### Planned
 
-- Persistent conversation sessions
-- Multi-message model context
+- Automatic conversation titles
 - Conversation summaries
-- Structured logging
+- Context-window token management
+- Structured application logging
 - Semantic memory retrieval
 - Memory editing and categorization commands
 
 ---
+
+## [0.5.0] - 2026-07-31
+
+### Added
+
+- Persistent conversation sessions
+- Conversation IDs and titles
+- Persistent user and assistant message history
+- Automatic restoration of the most recently active conversation
+- `new chat` command
+- `chats` command
+- `use chat` command
+- `rename chat` command
+- `history` command
+- Multi-message context for model responses
+- Conversation repository and service layers
+- Unit tests for conversation persistence and context
+
+### Changed
+
+- Extended ATLAS Core with conversation-session coordination
+- Combined persistent memory and conversation context for model requests
+- Updated the command-line interface with conversation controls
+- Updated the project version to 0.5.0
+
+### Security
+
+- Conversation history remains local
+- Conversation data remains excluded from Git
+- Database queries continue to use parameterized SQL values
+
+### Notes
+
+- ATLAS currently sends up to 20 recent messages as context.
+- Automatic summarization and token-aware context limits are planned for a later version.
+- Explicit persistent memories remain separate from conversation history.
 
 ## [0.4.0] - 2026-07-31
 
