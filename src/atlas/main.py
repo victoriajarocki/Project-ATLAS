@@ -2,11 +2,16 @@
 
 from atlas.config.settings import load_settings
 from atlas.core.app import AtlasApp
+from atlas.memory.database import (
+    MemoryDatabaseError,
+    SQLiteMemoryRepository,
+)
+from atlas.memory.service import MemoryService
 from atlas.models.base import ModelError
 from atlas.models.factory import create_model_provider
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.3.0"
+ATLAS_VERSION = "0.4.0"
 EXIT_COMMANDS = {"exit", "quit", "shutdown"}
 
 
@@ -16,8 +21,14 @@ def run_cli(app: AtlasApp) -> None:
     print(f"{ATLAS_NAME} v{ATLAS_VERSION}")
     print("Personal AI Operating System")
     print(f"Model provider: {app.provider_name}")
+    print(f"Persistent memory: {'Enabled' if app.memory_enabled else 'Disabled'}")
     print("=" * 50)
-    print("Type 'exit' to close the session.\n")
+    print("Commands:")
+    print("  remember <information>")
+    print("  memories")
+    print("  forget <memory ID>")
+    print("  exit")
+    print()
 
     while True:
         try:
@@ -39,13 +50,28 @@ def run_cli(app: AtlasApp) -> None:
         print(f"ATLAS: {response}\n")
 
 
+def create_app() -> AtlasApp:
+    """Configure and create the ATLAS application."""
+    settings = load_settings()
+
+    provider = create_model_provider(settings)
+
+    repository = SQLiteMemoryRepository(database_path=settings.memory_database_path)
+
+    memory_service = MemoryService(repository)
+    memory_service.initialize()
+
+    return AtlasApp(
+        model_provider=provider,
+        memory_service=memory_service,
+    )
+
+
 def main() -> None:
     """Configure and start Project ATLAS."""
     try:
-        settings = load_settings()
-        provider = create_model_provider(settings)
-        app = AtlasApp(model_provider=provider)
-    except ModelError as error:
+        app = create_app()
+    except (ModelError, MemoryDatabaseError) as error:
         print(f"ATLAS STARTUP ERROR: {error}")
         return
 

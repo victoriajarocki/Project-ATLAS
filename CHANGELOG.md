@@ -14,15 +14,49 @@ The project follows semantic versioning:
 
 ### Planned
 
-- Long-term memory engine
-- Conversation history
-- Session management
+- Persistent conversation sessions
+- Multi-message model context
+- Conversation summaries
 - Structured logging
-- SQLite memory database
 - Semantic memory retrieval
-- User profile management
+- Memory editing and categorization commands
 
 ---
+
+## [0.4.0] - 2026-07-31
+
+### Added
+
+- Persistent SQLite memory database
+- Memory records with IDs and timestamps
+- Memory categories and source tracking
+- Explicit `remember` command
+- Explicit `memories` command
+- Explicit `forget` command
+- Persistent-memory context for model responses
+- Memory input validation
+- Memory repository and service layers
+- Unit tests for persistent storage
+- Isolated temporary databases for tests
+
+### Changed
+
+- Extended ATLAS Core with an optional memory subsystem
+- Extended environment configuration with a memory database path
+- Updated the command-line interface with memory commands
+- Updated the project version to 0.4.0
+
+### Security
+
+- Memory database remains local and excluded from Git
+- SQL values use parameterized database queries
+- ATLAS stores memories only through explicit user commands
+
+### Notes
+
+- Memory retrieval currently uses recent-memory context and basic text search.
+- Semantic vector retrieval is reserved for a later version.
+- Conversation sessions and automatic conversation context are reserved for v0.5.0.
 
 ## [0.3.0] - 2026-07-31
 
