@@ -21,6 +21,14 @@ The project follows semantic versioning:
 - Automatic conversation titles
 - Semantic memory retrieval
 
+### Added
+
+- GitHub Actions continuous-integration workflow
+- Automated Ruff lint checks on pushes and pull requests
+- Automated Ruff formatting verification
+- Automated mypy static type checks
+- Automated pytest test execution
+
 ---
 
 ## [0.7.0] - 2026-07-31
