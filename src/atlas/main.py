@@ -20,9 +20,16 @@ from atlas.observability.logging import (
     LoggingConfigurationError,
     configure_logging,
 )
+from atlas.tools.base import ToolError
+from atlas.tools.builtin import (
+    CalculatorTool,
+    CurrentTimeTool,
+)
+from atlas.tools.executor import ToolExecutor
+from atlas.tools.registry import ToolRegistry
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.6.0"
+ATLAS_VERSION = "0.7.0"
 EXIT_COMMANDS = {"exit", "quit", "shutdown"}
 
 logger = logging.getLogger(__name__)
@@ -36,6 +43,7 @@ def run_cli(app: AtlasApp) -> None:
     print(f"Model provider: {app.provider_name}")
     print(f"Persistent memory: {'Enabled' if app.memory_enabled else 'Disabled'}")
     print(f"Conversation sessions: {'Enabled' if app.conversations_enabled else 'Disabled'}")
+    print(f"Tool system: {'Enabled' if app.tools_enabled else 'Disabled'}")
 
     if app.active_conversation_id is not None:
         print(f"Active chat: {app.active_conversation_id}")
@@ -52,6 +60,12 @@ def run_cli(app: AtlasApp) -> None:
     print("  use chat <chat ID>")
     print("  rename chat <new title>")
     print("  history")
+    print()
+    print("Tool commands:")
+    print("  tools")
+    print('  tool calculator {"expression": "2 + 2"}')
+    print("  tool current_time {}")
+    print()
     print("  exit")
     print()
 
@@ -76,6 +90,7 @@ def run_cli(app: AtlasApp) -> None:
             ModelError,
             ConversationDatabaseError,
             MemoryDatabaseError,
+            ToolError,
         ) as error:
             logger.exception("ATLAS request failed in the CLI.")
             print(f"ATLAS ERROR: {error}\n")
@@ -113,10 +128,22 @@ def create_app(settings: Settings) -> AtlasApp:
 
     logger.info("Conversation sessions initialized.")
 
+    tool_registry = ToolRegistry()
+    tool_registry.register(CalculatorTool())
+    tool_registry.register(CurrentTimeTool())
+
+    tool_executor = ToolExecutor(tool_registry)
+
+    logger.info(
+        "Tool system initialized. tool_count=%d",
+        len(tool_registry.list_definitions()),
+    )
+
     app = AtlasApp(
         model_provider=provider,
         memory_service=memory_service,
         conversation_service=conversation_service,
+        tool_executor=tool_executor,
     )
 
     logger.info("ATLAS application created successfully.")
@@ -150,6 +177,7 @@ def main() -> None:
         MemoryDatabaseError,
         ConversationDatabaseError,
         LoggingConfigurationError,
+        ToolError,
     ) as error:
         logger.exception("ATLAS startup failed.")
         print(f"ATLAS STARTUP ERROR: {error}")

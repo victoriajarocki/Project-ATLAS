@@ -1,7 +1,9 @@
 """Core application coordinator for Project ATLAS."""
 
+import json
 import logging
 from time import perf_counter
+from typing import Any
 
 from atlas.conversations.database import ConversationDatabaseError
 from atlas.conversations.service import (
@@ -15,6 +17,11 @@ from atlas.memory.service import (
 )
 from atlas.models.base import ModelProvider
 from atlas.observability.logging import request_context
+from atlas.tools.base import (
+    ToolError,
+    ToolValidationError,
+)
+from atlas.tools.executor import ToolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -22,17 +29,86 @@ logger = logging.getLogger(__name__)
 class AtlasApp:
     """Coordinate user requests with ATLAS subsystems."""
 
+    def _list_tools(self) -> str:
+        """Return a readable list of registered tools."""
+        if self._tool_executor is None:
+            return "The tool system is not currently available."
+
+        definitions = self._tool_executor.registry.list_definitions()
+
+        if not definitions:
+            return "No tools are currently registered."
+
+        lines = ["Registered tools:"]
+
+        for definition in definitions:
+            confirmation = (
+                "confirmation required"
+                if definition.requires_confirmation
+                else "no confirmation required"
+            )
+
+            lines.append(
+                f"- {definition.name} "
+                f"[risk: {definition.risk_level}] "
+                f"({confirmation}): "
+                f"{definition.description}"
+            )
+
+        return "\n".join(lines)
+
+    def _execute_tool_command(self, command: str) -> str:
+        """Parse and execute an explicit tool command."""
+        if self._tool_executor is None:
+            return "The tool system is not currently available."
+
+        cleaned_command = command.strip()
+
+        if not cleaned_command:
+            return "Use: tool <tool name> <JSON arguments>"
+
+        name_and_arguments = cleaned_command.split(maxsplit=1)
+        tool_name = name_and_arguments[0]
+
+        arguments_text = name_and_arguments[1] if len(name_and_arguments) == 2 else "{}"
+
+        try:
+            parsed_arguments: Any = json.loads(arguments_text)
+        except json.JSONDecodeError as error:
+            return f"Tool arguments must be valid JSON. JSON error: {error.msg}"
+
+        if not isinstance(parsed_arguments, dict):
+            return "Tool arguments must be a JSON object."
+
+        try:
+            result = self._tool_executor.execute(
+                tool_name=tool_name,
+                arguments=parsed_arguments,
+            )
+        except ToolValidationError as error:
+            return f"Tool input was invalid: {error}"
+        except ToolError as error:
+            return f"The tool failed: {error}"
+
+        if not result.success:
+            error_message = result.error or "The tool did not provide an error message."
+            return f"Tool {result.tool_name} failed: {error_message}"
+
+        return f"Tool {result.tool_name} result: {result.output}"
+
     def __init__(
         self,
         model_provider: ModelProvider,
         memory_service: MemoryService | None = None,
         conversation_service: ConversationService | None = None,
+        tool_executor: ToolExecutor | None = None,
     ) -> None:
         """Initialize ATLAS with its configured subsystems."""
         self._model_provider = model_provider
         self._memory_service = memory_service
         self._conversation_service = conversation_service
         self._active_conversation_id: int | None = None
+        self._tool_executor = tool_executor
 
         if self._conversation_service is not None:
             conversation = self._conversation_service.get_or_create_latest()
@@ -47,6 +123,11 @@ class AtlasApp:
     def provider_name(self) -> str:
         """Return the active model provider name."""
         return self._model_provider.provider_name
+
+    @property
+    def tools_enabled(self) -> bool:
+        """Report whether the tool system is available."""
+        return self._tool_executor is not None
 
     @property
     def memory_enabled(self) -> bool:
@@ -143,6 +224,13 @@ class AtlasApp:
         if lowered_message.startswith("rename chat "):
             title = message[len("rename chat ") :]
             return self._rename_conversation(title)
+
+        if lowered_message == "tools":
+            return self._list_tools()
+
+        if lowered_message.startswith("tool "):
+            command = message[len("tool ") :]
+            return self._execute_tool_command(command)
 
         return None
 

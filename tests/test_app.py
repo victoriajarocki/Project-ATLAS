@@ -12,6 +12,12 @@ from atlas.core.app import AtlasApp
 from atlas.memory.database import SQLiteMemoryRepository
 from atlas.memory.service import MemoryService
 from atlas.models.base import ModelProvider
+from atlas.tools.builtin import (
+    CalculatorTool,
+    CurrentTimeTool,
+)
+from atlas.tools.executor import ToolExecutor
+from atlas.tools.registry import ToolRegistry
 
 
 class RecordingModelProvider(ModelProvider):
@@ -54,10 +60,17 @@ def app(
     conversation_service = ConversationService(conversation_repository)
     conversation_service.initialize()
 
+    tool_registry = ToolRegistry()
+    tool_registry.register(CalculatorTool())
+    tool_registry.register(CurrentTimeTool())
+
+    tool_executor = ToolExecutor(tool_registry)
+
     return AtlasApp(
         model_provider=provider,
         memory_service=memory_service,
         conversation_service=conversation_service,
+        tool_executor=tool_executor,
     )
 
 
@@ -158,3 +171,39 @@ def test_memory_commands_still_work(
     response = app.process_message("remember My L2 rocket is named Wraith.")
 
     assert response.startswith("I will remember that. Memory ID:")
+
+
+def test_app_reports_tool_status(
+    app: AtlasApp,
+) -> None:
+    """ATLAS should report that tools are enabled."""
+    assert app.tools_enabled is True
+
+
+def test_tools_command_lists_registered_tools(
+    app: AtlasApp,
+) -> None:
+    """The tools command should list available tools."""
+    response = app.process_message("tools")
+
+    assert "Registered tools:" in response
+    assert "calculator" in response
+    assert "current_time" in response
+
+
+def test_calculator_tool_command(
+    app: AtlasApp,
+) -> None:
+    """ATLAS should execute the calculator tool."""
+    response = app.process_message('tool calculator {"expression": "12 * 4"}')
+
+    assert response == "Tool calculator result: 48"
+
+
+def test_invalid_tool_json_is_rejected(
+    app: AtlasApp,
+) -> None:
+    """ATLAS should reject invalid JSON arguments."""
+    response = app.process_message("tool calculator not-json")
+
+    assert "Tool arguments must be valid JSON" in response

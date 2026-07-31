@@ -14,14 +14,54 @@ The project follows semantic versioning:
 
 ### Planned
 
-- Security and permission system
-- Action confirmation policies
-- Tool interface and registry
+- Permission and action-confirmation system
+- Medium-risk tool approval flow
+- File and application tools
+- Model-directed tool selection
 - Automatic conversation titles
-- Conversation summaries
 - Semantic memory retrieval
 
 ---
+
+## [0.7.0] - 2026-07-31
+
+### Added
+
+- Extensible tool interface
+- Tool definitions and parameter schemas
+- Tool registry
+- Controlled tool executor
+- Tool execution results
+- Tool risk classifications
+- Tool confirmation metadata
+- Explicit `tools` command
+- Explicit `tool` execution command
+- Safe arithmetic calculator tool
+- Current local date-and-time tool
+- Unit tests for registration, validation, and execution
+- Tool execution logging and timing
+
+### Changed
+
+- Extended ATLAS Core with an optional tool subsystem
+- Updated the command-line interface with tool commands
+- Updated the application startup process to register built-in tools
+- Updated the project version to 0.7.0
+
+### Security
+
+- Calculator expressions are parsed through a restricted syntax tree
+- Python `eval()` is not used
+- Arbitrary imports and function calls are rejected
+- Only explicitly registered tools can be executed
+- Initial tools are classified as low risk
+- Tool logs exclude complete user arguments
+
+### Notes
+
+- Tool execution currently requires explicit CLI commands.
+- Model-directed tool selection is planned for a later version.
+- File-system, terminal, and computer-control tools are intentionally deferred until permission and confirmation controls are implemented.
 
 ## [0.6.0] - 2026-07-31
 
