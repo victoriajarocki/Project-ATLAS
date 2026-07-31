@@ -8,14 +8,49 @@ The project follows semantic versioning:
 - Minor version: new backward-compatible capabilities
 - Patch version: backward-compatible fixes
 
+---
+
 ## [Unreleased]
 
 ### Planned
 
-- Add local Ollama model provider
-- Add conversation history
-- Add structured logging
-- Add session management
+- Long-term memory engine
+- Conversation history
+- Session management
+- Structured logging
+- SQLite memory database
+- Semantic memory retrieval
+- User profile management
+
+---
+
+## [0.3.0] - 2026-07-31
+
+### Added
+
+- Ollama model provider
+- Local AI inference support
+- Ollama configuration options
+- Ollama provider unit tests
+- Support for local model hosts
+- Local development workflow without API costs
+
+### Changed
+
+- Extended the provider factory to support multiple AI backends
+- Extended the configuration system with Ollama settings
+- Updated the application version to 0.3.0
+- Improved provider abstraction for future expansion
+
+### Notes
+
+- Mock remains the default development provider.
+- OpenAI support remains available.
+- Ollama enables completely local inference.
+- Current recommended development model:
+  - `qwen3:4b`
+
+---
 
 ## [0.2.0] - 2026-07-29
 
@@ -40,6 +75,8 @@ The project follows semantic versioning:
 
 - Mock is the default development provider.
 - OpenAI integration is available but requires separate API billing and quota.
+
+---
 
 ## [0.1.0] - 2026-07-29
 

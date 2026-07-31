@@ -3,6 +3,7 @@
 from atlas.config.settings import Settings
 from atlas.models.base import ModelConfigurationError, ModelProvider
 from atlas.models.mock import MockModelProvider
+from atlas.models.ollama_provider import OllamaModelProvider
 from atlas.models.openai_provider import OpenAIModelProvider
 
 
@@ -17,7 +18,13 @@ def create_model_provider(settings: Settings) -> ModelProvider:
             model=settings.model,
         )
 
+    if settings.provider == "ollama":
+        return OllamaModelProvider(
+            model=settings.model,
+            host=settings.ollama_host,
+        )
+
     raise ModelConfigurationError(
         f"Unsupported ATLAS provider: {settings.provider!r}. "
-        "Supported providers are 'mock' and 'openai'."
+        "Supported providers are 'mock', 'openai', and 'ollama'."
     )

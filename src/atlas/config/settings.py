@@ -15,6 +15,7 @@ class Settings:
     provider: str
     model: str
     openai_api_key: str | None
+    ollama_host: str
 
 
 def load_settings() -> Settings:
@@ -22,14 +23,22 @@ def load_settings() -> Settings:
     load_dotenv()
 
     provider = os.getenv("ATLAS_PROVIDER", "mock").strip().lower()
-    model = os.getenv("ATLAS_MODEL", "gpt-5.5").strip()
+    model = os.getenv("ATLAS_MODEL", "mock-model").strip()
     openai_api_key = os.getenv("OPENAI_API_KEY")
+    ollama_host = os.getenv(
+        "OLLAMA_HOST",
+        "http://localhost:11434",
+    ).strip()
 
     if not model:
         raise ModelConfigurationError("ATLAS_MODEL cannot be empty.")
+
+    if not ollama_host:
+        raise ModelConfigurationError("OLLAMA_HOST cannot be empty.")
 
     return Settings(
         provider=provider,
         model=model,
         openai_api_key=openai_api_key,
+        ollama_host=ollama_host,
     )

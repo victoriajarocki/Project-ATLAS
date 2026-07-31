@@ -6,7 +6,7 @@ from atlas.models.base import ModelError
 from atlas.models.factory import create_model_provider
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.2.0"
+ATLAS_VERSION = "0.3.0"
 EXIT_COMMANDS = {"exit", "quit", "shutdown"}
 
 
