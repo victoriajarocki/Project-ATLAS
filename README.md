@@ -11,6 +11,7 @@
 ![Version](https://img.shields.io/badge/version-v0.7.0-blue)
 ![Python](https://img.shields.io/badge/python-3.13+-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-informational)
+![ATLAS CI](https://github.com/victoriajarocki/Project-ATLAS/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-Active%20Development-orange)
 
