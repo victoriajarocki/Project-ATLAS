@@ -528,6 +528,35 @@ When implementation changes:
 
 The changelog records completed work. The roadmap records planned work.
 
+## Continuous Integration
+
+Project ATLAS uses GitHub Actions to run automated quality checks.
+
+The workflow is defined in:
+
+```text
+.github/workflows/ci.yml
+```
+
+It runs when:
+
+- Code is pushed to `master`
+- A pull request targets `master`
+- The workflow is started manually
+
+The workflow verifies:
+
+```powershell
+ruff check .
+ruff format --check .
+mypy src
+pytest
+```
+
+A pull request should not be merged while required CI checks are failing.
+
+Local checks should still be run before pushing because CI is a final verification step rather than a replacement for local development testing.
+
 ---
 
 ## Definition of Done
