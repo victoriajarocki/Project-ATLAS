@@ -10,14 +10,20 @@ from atlas.tools.base import (
     ToolResult,
 )
 from atlas.tools.registry import ToolRegistry
+from atlas.tools.validation import (
+    validate_tool_arguments,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class ToolExecutor:
-    """Execute registered tools and record their outcomes."""
+    """Validate and execute registered ATLAS tools."""
 
-    def __init__(self, registry: ToolRegistry) -> None:
+    def __init__(
+        self,
+        registry: ToolRegistry,
+    ) -> None:
         """Initialize the executor with a tool registry."""
         self._registry = registry
 
@@ -26,12 +32,25 @@ class ToolExecutor:
         """Return the associated tool registry."""
         return self._registry
 
+    def validate_arguments(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+    ) -> None:
+        """Validate arguments without executing the tool."""
+        tool = self._registry.get(tool_name)
+
+        validate_tool_arguments(
+            definition=tool.definition,
+            arguments=arguments,
+        )
+
     def execute(
         self,
         tool_name: str,
         arguments: dict[str, Any],
     ) -> ToolResult:
-        """Execute one registered tool."""
+        """Validate and execute one registered tool."""
         started_at = perf_counter()
         tool = self._registry.get(tool_name)
         definition = tool.definition
@@ -43,19 +62,28 @@ class ToolExecutor:
         )
 
         try:
+            validate_tool_arguments(
+                definition=definition,
+                arguments=arguments,
+            )
+
             result = tool.execute(arguments)
+
         except ToolError:
             logger.exception(
                 "Tool execution failed. tool=%s",
                 definition.name,
             )
             raise
+
         except Exception as error:
             logger.exception(
                 "Unexpected tool failure. tool=%s",
                 definition.name,
             )
+
             raise ToolExecutionError(f"Tool {definition.name!r} failed unexpectedly.") from error
+
         finally:
             elapsed_seconds = perf_counter() - started_at
 

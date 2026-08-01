@@ -8,7 +8,7 @@
 
 ---
 
-![Version](https://img.shields.io/badge/version-v0.8.0-blue)
+![Version](https://img.shields.io/badge/version-v0.9.0-blue)
 ![Python](https://img.shields.io/badge/python-3.13+-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-informational)
 ![ATLAS CI](https://github.com/victoriajarocki/Project-ATLAS/actions/workflows/ci.yml/badge.svg)
@@ -21,34 +21,37 @@
 
 # Overview
 
-Project ATLAS is a long-term engineering project focused on building a modular, extensible, and privacy-first AI operating system.
+Project ATLAS is a long-term software engineering project focused on building a modular, extensible, privacy-first AI operating system.
 
-Rather than creating a single chatbot, the goal of ATLAS is to build a complete personal AI platform capable of natural conversation, long-term memory, secure tool execution, engineering assistance, computer interaction, and eventually robotics integration.
+Rather than developing a traditional chatbot, ATLAS is being engineered as a complete AI platform capable of natural conversation, long-term memory, secure tool execution, local reasoning, engineering assistance, computer interaction, and eventually autonomous task execution.
 
-ATLAS is designed from the beginning around software engineering principles including modular architecture, extensibility, testing, documentation, and maintainability.
+Every subsystem is designed around clean interfaces, testability, documentation, and long-term maintainability so that new capabilities can be added without requiring architectural redesign.
+
+Project ATLAS is intended to evolve over many years into a complete AI operating system.
 
 ---
 
 # Vision
 
-The long-term vision of Project ATLAS is to create an AI system that can act as:
+The long-term objective of ATLAS is to create an AI system capable of functioning as a:
 
 - Personal engineering assistant
-- Research assistant
 - Programming assistant
-- Knowledge management system
-- Automation platform
-- Voice assistant
+- Research assistant
+- Knowledge management platform
+- Automation system
 - Computer interface
+- Voice assistant
+- Vision-enabled assistant
 - Robotics control platform
 
-while remaining modular enough that entirely new capabilities can be added without redesigning the existing architecture.
+The project emphasizes modular software engineering rather than rapid feature development.
+
+Each subsystem is designed to remain independently maintainable while integrating seamlessly with the larger architecture.
 
 ---
 
 # Core Design Principles
-
-Project ATLAS is built around several guiding principles.
 
 ## Modular Architecture
 
@@ -56,16 +59,18 @@ Every major capability exists as an independent subsystem.
 
 Examples include:
 
-- Models
+- AI Providers
 - Memory
 - Conversations
-- Logging
+- Observability
 - Tools
+- Permissions
+- Filesystem
+- Planning
 - Voice
 - Vision
-- Planning
 
-Each subsystem can evolve independently.
+Each subsystem can evolve independently while maintaining stable public interfaces.
 
 ---
 
@@ -73,12 +78,14 @@ Each subsystem can evolve independently.
 
 Whenever practical, computation happens locally.
 
-ATLAS supports:
+Current local capabilities include:
 
-- Local LLMs through Ollama
+- Local Ollama models
+- Local SQLite databases
+- Local conversation storage
 - Local memory storage
-- Local conversation history
-- Local logging
+- Local log files
+- Local filesystem tools
 
 Cloud services remain optional rather than mandatory.
 
@@ -86,26 +93,38 @@ Cloud services remain optional rather than mandatory.
 
 ## Privacy First
 
-User data belongs to the user.
+User information belongs to the user.
 
 Current privacy features include:
 
-- Local SQLite databases
-- Local log files
-- Configurable AI providers
+- SQLite storage
+- Local logging
 - Environment-based secrets
-- Ignored sensitive files
-- Source-tracked memory
+- Scoped filesystem access
+- Path traversal protection
+- Risk-based permission controls
+- Confirmation-controlled tool execution
+
+Future versions will continue expanding local-first capabilities.
 
 ---
 
-## Extensibility
+## Engineering First
 
-ATLAS is designed to grow over many years.
+Project ATLAS is engineered using modern software engineering practices including:
 
-New functionality is added through modular interfaces rather than modifying existing systems.
+- Modular package architecture
+- Strong typing
+- Static analysis
+- Unit testing
+- Continuous integration
+- Versioned releases
+- Architecture documentation
+- Changelog management
+- Automated formatting
+- Automated linting
 
-This minimizes breaking changes while encouraging long-term maintainability.
+The objective is to build production-quality software rather than experimental prototypes.
 
 ---
 
@@ -116,6 +135,8 @@ This minimizes breaking changes while encouraging long-term maintainability.
 - Mock provider
 - OpenAI provider
 - Ollama provider
+- Provider factory architecture
+- Environment-based configuration
 
 ---
 
@@ -125,7 +146,8 @@ This minimizes breaking changes while encouraging long-term maintainability.
 - Remember command
 - Forget command
 - Memory IDs
-- Context injection
+- Automatic context injection
+- Source-tracked storage
 
 ---
 
@@ -133,30 +155,81 @@ This minimizes breaking changes while encouraging long-term maintainability.
 
 - Multiple persistent conversations
 - Conversation history
+- Automatic restoration
 - Conversation switching
 - Conversation renaming
-- Automatic context restoration
+- Context reconstruction
 
 ---
 
-## Structured Logging
+## Observability
 
+- Structured logging
 - Request IDs
 - Performance timing
+- Startup diagnostics
+- Audit logging
 - Rotating log files
-- Startup logging
-- Error logging
-- Audit records
 
 ---
 
 ## Tool Framework
 
 - Modular tool registry
-- Safe tool execution
-- Tool risk classifications
-- Calculator tool
-- Current time tool
+- Shared execution pipeline
+- JSON argument validation
+- Risk classification
+- Built-in tools
+- Extensible plugin architecture
+
+Current built-in tools include:
+
+- Calculator
+- Current Time
+- Confirmation Demo
+- Directory Listing
+- File Information
+- Read Text File
+- Create Directory
+- Write Text File
+
+---
+
+## Permission System
+
+ATLAS includes a dedicated permission subsystem that evaluates every tool request before execution.
+
+Current permission capabilities include:
+
+- Low-risk automatic execution
+- Medium-risk confirmation workflow
+- High-risk denial
+- Pending request management
+- Audit logging
+- Confirmation approval
+- Confirmation denial
+
+---
+
+## Secure Filesystem
+
+Version 0.9 introduces the first secure filesystem subsystem.
+
+Current capabilities include:
+
+- Workspace sandboxing
+- Configurable allowed directories
+- Secure path resolution
+- UTF-8 text reading
+- UTF-8 text writing
+- Directory creation
+- Directory listing
+- File metadata inspection
+- Maximum read limits
+- Maximum write limits
+- Path traversal protection
+
+All filesystem operations remain confined to explicitly configured workspace directories.
 
 ---
 
@@ -165,16 +238,35 @@ This minimizes breaking changes while encouraging long-term maintainability.
 | Component | Status |
 |-----------|--------|
 | Foundation | ✅ Complete |
-| Model Providers | ✅ Complete |
-| Local AI | ✅ Complete |
+| AI Providers | ✅ Complete |
 | Persistent Memory | ✅ Complete |
-| Conversations | ✅ Complete |
-| Logging | ✅ Complete |
+| Conversation Engine | ✅ Complete |
+| Observability | ✅ Complete |
 | Tool Framework | ✅ Complete |
-| Permissions | 🚧 In Progress |
+| Permission System | ✅ Complete |
+| Secure Filesystem | ✅ Complete |
+| Agent Framework | 🚧 Next Milestone |
+| Web Research | ⏳ Planned |
+| Semantic Memory | ⏳ Planned |
 | Voice | ⏳ Planned |
 | Vision | ⏳ Planned |
-| Robotics | ⏳ Planned |
+| Robotics | ⏳ Long-Term |
+
+---
+
+# Current Repository Statistics
+
+Current release:
+
+- **Version:** v0.9.0
+- **Python:** 3.13+
+- **Architecture:** Modular
+- **Unit Tests:** 131 Passing
+- **Static Type Checking:** MyPy
+- **Formatting:** Ruff
+- **Linting:** Ruff
+- **CI:** GitHub Actions
+- **License:** MIT
 
 ---
 
@@ -182,24 +274,43 @@ This minimizes breaking changes while encouraging long-term maintainability.
 
 ```text
 Project-ATLAS/
-
-src/
-    atlas/
-        config/
-        conversations/
-        core/
-        memory/
-        models/
-        observability/
-        tools/
-
-tests/
-
-README.md
-CHANGELOG.md
-ROADMAP.md
-ARCHITECTURE.md
-LICENSE
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── docs/
+│   ├── configuration.md
+│   ├── development.md
+│   ├── filesystem.md
+│   ├── installation.md
+│   ├── permissions.md
+│   └── tools.md
+│
+├── logs/
+│
+├── src/
+│   └── atlas/
+│       ├── config/
+│       ├── conversations/
+│       ├── core/
+│       ├── filesystem/
+│       ├── memory/
+│       ├── models/
+│       ├── observability/
+│       ├── permissions/
+│       └── tools/
+│
+├── tests/
+│
+├── .env.example
+├── .gitignore
+├── ARCHITECTURE.md
+├── CHANGELOG.md
+├── LICENSE
+├── pyproject.toml
+├── README.md
+└── ROADMAP.md
 ```
 
 ---
@@ -209,7 +320,7 @@ LICENSE
 Clone the repository.
 
 ```bash
-git clone https://github.com/jarockivictoria/Project-ATLAS.git
+git clone https://github.com/victoriajarocki/Project-ATLAS.git
 ```
 
 Enter the project directory.
@@ -226,27 +337,221 @@ python -m venv .venv
 
 Activate the virtual environment.
 
-Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-Install the project.
+Install ATLAS in editable development mode.
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-Launch ATLAS.
+---
+
+# Configuration
+
+ATLAS is configured entirely through environment variables.
+
+Create a local configuration file.
+
+```text
+.env
+```
+
+Example configuration:
+
+```dotenv
+ATLAS_PROVIDER=mock
+ATLAS_MODEL=mock-model
+
+OPENAI_API_KEY=
+
+OLLAMA_HOST=http://localhost:11434
+
+ATLAS_MEMORY_DATABASE=data/atlas_memory.db
+
+ATLAS_LOG_DIRECTORY=logs
+ATLAS_LOG_LEVEL=INFO
+ATLAS_LOG_MAX_BYTES=5000000
+ATLAS_LOG_BACKUP_COUNT=5
+
+ATLAS_ALLOWED_DIRECTORIES=workspace
+ATLAS_FILESYSTEM_MAX_READ_BYTES=1000000
+ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS=1000000
+```
+
+Filesystem access is intentionally restricted to configured workspace directories.
+
+---
+
+# Running ATLAS
+
+Launch the application.
 
 ```bash
 atlas
 ```
 
+Example startup:
+
+```text
+==================================================
+ATLAS v0.9.0
+Personal AI Operating System
+
+Model provider: Mock
+
+Persistent memory: Enabled
+Conversation sessions: Enabled
+Tool system: Enabled
+Permission system: Enabled
+
+==================================================
+```
+
 ---
 
-# Development
+# Example Commands
+
+## Persistent Memory
+
+Remember information.
+
+```text
+remember My L2 rocket is named Wraith.
+```
+
+View stored memories.
+
+```text
+memories
+```
+
+Delete a memory.
+
+```text
+forget 3
+```
+
+---
+
+## Conversation Management
+
+Create a new conversation.
+
+```text
+new chat Rocket Design
+```
+
+View conversations.
+
+```text
+chats
+```
+
+Switch conversations.
+
+```text
+use chat 2
+```
+
+Rename the active conversation.
+
+```text
+rename chat Research Notes
+```
+
+Display recent history.
+
+```text
+history
+```
+
+---
+
+## Built-in Tools
+
+List available tools.
+
+```text
+tools
+```
+
+Calculator
+
+```text
+tool calculator {"expression":"15*(6+3)"}
+```
+
+Current time
+
+```text
+tool current_time {}
+```
+
+---
+
+## Filesystem Tools
+
+List files.
+
+```text
+tool list_directory {"path":"."}
+```
+
+Read a text file.
+
+```text
+tool read_text_file {"path":"Rocket Design/notes.txt"}
+```
+
+Inspect file metadata.
+
+```text
+tool file_info {"path":"Rocket Design/notes.txt"}
+```
+
+Create a directory.
+
+```text
+tool create_directory {"path":"Rocket Design"}
+```
+
+Write a file.
+
+```text
+tool write_text_file {
+    "path":"Rocket Design/notes.txt",
+    "content":"Project ATLAS"
+}
+```
+
+---
+
+## Confirmation Workflow
+
+Medium-risk tools require explicit user approval.
+
+Approve execution.
+
+```text
+confirm yes
+```
+
+Reject execution.
+
+```text
+confirm no
+```
+
+ATLAS never executes confirmation-controlled tools until approval is received.
+
+---
+
+# Development Workflow
 
 Run formatting.
 
@@ -266,77 +571,314 @@ Run static type checking.
 mypy src
 ```
 
-Run unit tests.
+Run all tests.
 
 ```bash
 pytest
 ```
 
+Current automated test suite:
+
+- 131 passing tests
+- Filesystem subsystem tests
+- Permission workflow tests
+- Conversation tests
+- Memory tests
+- Tool framework tests
+- Logging tests
+- Model provider tests
+
+---
+
+# Continuous Integration
+
+Every pull request automatically performs:
+
+- Ruff formatting verification
+- Ruff linting
+- MyPy type checking
+- Complete unit test suite
+
+This ensures every merge into the main branch maintains project quality standards.
+
 ---
 
 # Documentation
 
-Detailed project documentation is available in:
+Additional documentation is available throughout the repository.
 
-- [Installation Guide](docs/installation.md)
-- [Development Guide](docs/development.md)
-- [Configuration Reference](docs/configuration.md)
-- [Tool System](docs/tools.md)
-- [Permission System](docs/permissions.md)
-- [Architecture](ARCHITECTURE.md)
-- [Roadmap](ROADMAP.md)
-- [Changelog](CHANGELOG.md)
-- [GitHub Releases](https://github.com/victoriajarocki/Project-ATLAS/releases)
+| Document | Description |
+|----------|-------------|
+| `ARCHITECTURE.md` | Complete system architecture |
+| `CHANGELOG.md` | Version history |
+| `ROADMAP.md` | Development roadmap |
+| `docs/installation.md` | Installation guide |
+| `docs/configuration.md` | Environment configuration |
+| `docs/development.md` | Development workflow |
+| `docs/tools.md` | Tool framework |
+| `docs/permissions.md` | Permission subsystem |
+| `docs/filesystem.md` | Secure filesystem subsystem |
 
 ---
 
-# Current Version
+# Current Release
 
-Current Release
+## Project ATLAS v0.9.0
 
-**v0.8.0**
+ATLAS v0.9.0 introduces the first secure filesystem subsystem.
 
-Recent additions include:
+Major additions include:
 
-- Tool registry
-- Tool execution framework
-- Calculator tool
-- Current time tool
-- Risk-based tool definitions
+- Scoped filesystem architecture
+- Secure path resolver
+- FileSystemService
+- Read text files
+- Write text files
+- Create directories
+- Directory listing
+- File metadata inspection
+- JSON schema validation
+- Shared argument validation
+- Workspace sandboxing
+- Path traversal protection
+- Permission-controlled filesystem writes
+- Expanded automated test coverage
 
 ---
 
 # Long-Term Roadmap
 
-The ATLAS roadmap currently includes development of:
+Project ATLAS is being developed as a long-term engineering project through incremental, versioned milestones.
 
-- Permission system
-- Secure computer control
-- File system tools
-- Web research tools
-- Semantic memory
-- Voice interface
-- Vision
-- Desktop application
-- Engineering integrations
-- Robotics platform
+## Completed
 
-See `ROADMAP.md` for the complete development roadmap.
+- ✅ v0.1.0 — Foundation
+- ✅ v0.2.0 — Model Provider Architecture
+- ✅ v0.3.0 — Local AI (Ollama)
+- ✅ v0.4.0 — Persistent Memory
+- ✅ v0.5.0 — Conversation Sessions
+- ✅ v0.6.0 — Structured Logging
+- ✅ v0.7.0 — Tool Framework
+- ✅ v0.8.0 — Permission System
+- ✅ v0.9.0 — Secure Filesystem
 
 ---
 
-# Philosophy
+## Next Milestone
 
-ATLAS is not intended to be another chatbot.
+### v1.0.0 — Agent Framework
 
-The objective is to engineer a long-lived AI operating system whose capabilities can expand over time without requiring architectural redesign.
+The next major milestone transitions ATLAS from executing individual commands to reasoning about complex tasks.
 
-Every version is built with long-term maintainability, modularity, and extensibility as primary goals.
+Planned capabilities include:
+
+- Multi-step task planning
+- Automatic tool selection
+- Sequential tool execution
+- Internal reasoning pipeline
+- Action planning
+- Agent execution loop
+- Task completion summaries
+
+Example:
+
+```text
+You:
+Create a folder called Rockets,
+create notes.txt,
+and write "Project Wraith"
+inside it.
+```
+
+ATLAS will internally plan:
+
+```text
+Thought
+↓
+
+Create directory
+
+↓
+
+Create file
+
+↓
+
+Write contents
+
+↓
+
+Return completion summary
+```
+
+This represents the transition from a command-driven assistant to an intelligent AI agent.
+
+---
+
+## Future Development
+
+Planned future milestones include:
+
+### AI
+
+- Semantic memory
+- Long-term memory ranking
+- Memory retrieval optimization
+- Multiple reasoning modes
+
+### Tools
+
+- Web search
+- Weather
+- Email
+- Calendar
+- PDF reader
+- Code execution
+- Git integration
+
+### Computer Interaction
+
+- Desktop automation
+- Keyboard control
+- Mouse control
+- Application launching
+- Screen understanding
+
+### Voice
+
+- Speech recognition
+- Streaming conversation
+- Wake word
+- Natural voice synthesis
+
+### Vision
+
+- Image understanding
+- Screenshot analysis
+- OCR
+- Camera input
+
+### Engineering
+
+- CAD assistance
+- MATLAB integration
+- Python execution
+- Engineering calculations
+- Scientific workflows
+
+### Robotics
+
+- Sensor integration
+- Robot control
+- Autonomous planning
+- Real-world interaction
+
+---
+
+# Contributing
+
+Project ATLAS is currently developed as a long-term personal engineering project.
+
+Although outside contributions are not currently being accepted, the repository follows modern software engineering practices including:
+
+- Feature branches
+- Pull requests
+- Versioned releases
+- Automated testing
+- Continuous integration
+- Static analysis
+- Comprehensive documentation
+
+Future community contributions may be supported as the architecture matures.
+
+---
+
+# Version History
+
+| Version | Major Feature |
+|----------|---------------|
+| v0.1.0 | Project Foundation |
+| v0.2.0 | Model Provider Architecture |
+| v0.3.0 | Ollama Integration |
+| v0.4.0 | Persistent Memory |
+| v0.5.0 | Conversation Sessions |
+| v0.6.0 | Structured Logging |
+| v0.7.0 | Tool Framework |
+| v0.8.0 | Permission System |
+| v0.9.0 | Secure Filesystem |
+
+A complete history of every release is available in:
+
+- `CHANGELOG.md`
+- GitHub Releases
+
+---
+
+# Engineering Philosophy
+
+Project ATLAS is built around one guiding principle:
+
+> Build the architecture first. Build capabilities second.
+
+Every subsystem is designed with long-term maintainability, modularity, and extensibility as primary goals.
+
+Rather than optimizing for rapid feature development, ATLAS prioritizes:
+
+- Clean architecture
+- Stable interfaces
+- Thorough testing
+- Comprehensive documentation
+- Versioned development
+- Incremental improvement
+
+The objective is not simply to create another AI assistant, but to engineer a software platform capable of supporting years of future development.
+
+---
+
+# Project Status
+
+Current release:
+
+**Project ATLAS v0.9.0**
+
+Current implementation includes:
+
+- ✅ Modular architecture
+- ✅ Multiple AI providers
+- ✅ Persistent memory
+- ✅ Conversation management
+- ✅ Structured logging
+- ✅ Tool framework
+- ✅ Permission system
+- ✅ Secure filesystem
+- ✅ Continuous integration
+- ✅ Comprehensive documentation
+- ✅ 131 automated tests
+
+Development is actively continuing toward the v1.0.0 Agent Framework milestone.
 
 ---
 
 # License
 
-This project is licensed under the MIT License.
+Project ATLAS is released under the MIT License.
 
-See the `LICENSE` file for details.
+See the `LICENSE` file for complete licensing information.
+
+---
+
+<div align="center">
+
+## Project ATLAS
+
+*A modular AI operating system engineered for long-term growth.*
+
+**Current Version:** **v0.9.0**
+
+**Next Milestone:** **v1.0.0 — Agent Framework**
+
+---
+
+*"Build the architecture today for the intelligence of tomorrow."*
+
+</div>

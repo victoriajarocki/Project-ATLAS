@@ -28,6 +28,9 @@ def create_test_settings(
         log_level="INFO",
         log_max_bytes=5_000_000,
         log_backup_count=5,
+        allowed_directories=(Path("workspace"),),
+        filesystem_max_read_bytes=1_000_000,
+        filesystem_max_write_characters=1_000_000,
     )
 
 

@@ -9,6 +9,8 @@ from atlas.conversations.database import (
 )
 from atlas.conversations.service import ConversationService
 from atlas.core.app import AtlasApp
+from atlas.filesystem.paths import ScopedPathResolver
+from atlas.filesystem.service import FileSystemService
 from atlas.memory.database import SQLiteMemoryRepository
 from atlas.memory.service import MemoryService
 from atlas.models.base import ModelProvider
@@ -17,7 +19,12 @@ from atlas.permissions.service import PermissionService
 from atlas.tools.builtin import (
     CalculatorTool,
     ConfirmationDemoTool,
+    CreateDirectoryTool,
     CurrentTimeTool,
+    FileInfoTool,
+    ListDirectoryTool,
+    ReadTextFileTool,
+    WriteTextFileTool,
 )
 from atlas.tools.executor import ToolExecutor
 from atlas.tools.registry import ToolRegistry
@@ -35,7 +42,10 @@ class RecordingModelProvider(ModelProvider):
         """Return the provider name."""
         return "Recording"
 
-    def generate_response(self, user_message: str) -> str:
+    def generate_response(
+        self,
+        user_message: str,
+    ) -> str:
         """Record the supplied input and return a response."""
         self.last_input = user_message
         return "Recorded response."
@@ -48,8 +58,20 @@ def provider() -> RecordingModelProvider:
 
 
 @pytest.fixture
+def workspace(
+    tmp_path: Path,
+) -> Path:
+    """Create an isolated ATLAS file-system workspace."""
+    directory = tmp_path / "workspace"
+    directory.mkdir()
+
+    return directory
+
+
+@pytest.fixture
 def app(
     tmp_path: Path,
+    workspace: Path,
     provider: RecordingModelProvider,
 ) -> AtlasApp:
     """Create an isolated ATLAS application."""
@@ -63,15 +85,29 @@ def app(
     conversation_service = ConversationService(conversation_repository)
     conversation_service.initialize()
 
+    path_resolver = ScopedPathResolver(allowed_directories=(workspace,))
+
+    filesystem_service = FileSystemService(
+        path_resolver=path_resolver,
+        max_read_bytes=1_000,
+        max_write_characters=1_000,
+    )
+
     tool_registry = ToolRegistry()
+
     tool_registry.register(CalculatorTool())
     tool_registry.register(CurrentTimeTool())
     tool_registry.register(ConfirmationDemoTool())
 
+    tool_registry.register(ListDirectoryTool(filesystem_service))
+    tool_registry.register(FileInfoTool(filesystem_service))
+    tool_registry.register(ReadTextFileTool(filesystem_service))
+    tool_registry.register(CreateDirectoryTool(filesystem_service))
+    tool_registry.register(WriteTextFileTool(filesystem_service))
+
     tool_executor = ToolExecutor(tool_registry)
 
-    permission_policy = PermissionPolicy()
-    permission_service = PermissionService(permission_policy)
+    permission_service = PermissionService(PermissionPolicy())
 
     return AtlasApp(
         model_provider=provider,
@@ -110,7 +146,7 @@ def test_previous_messages_are_sent_as_context(
     app: AtlasApp,
     provider: RecordingModelProvider,
 ) -> None:
-    """Earlier messages should appear in later model input."""
+    """Earlier messages should appear in model input."""
     app.process_message("My experimental rocket is called Specter.")
 
     app.process_message("What is its name?")
@@ -168,136 +204,258 @@ def test_rename_chat_changes_title(
     response = app.process_message("rename chat Aerospace Research")
 
     assert "Aerospace Research" in response
-
-    chats = app.process_message("chats")
-
-    assert "Aerospace Research" in chats
+    assert "Aerospace Research" in app.process_message("chats")
 
 
 def test_memory_commands_still_work(
     app: AtlasApp,
 ) -> None:
-    """Permission support should preserve memory commands."""
+    """File-system support should preserve memory commands."""
     response = app.process_message("remember My L2 rocket is named Wraith.")
 
     assert response.startswith("I will remember that. Memory ID:")
 
 
-def test_tools_command_lists_registered_tools(
+def test_tools_command_lists_filesystem_tools(
     app: AtlasApp,
 ) -> None:
-    """The tools command should list available tools."""
+    """The tools command should list v0.9 tools."""
     response = app.process_message("tools")
 
-    assert "Registered tools:" in response
     assert "calculator" in response
     assert "current_time" in response
     assert "confirmation_demo" in response
+    assert "list_directory" in response
+    assert "file_info" in response
+    assert "read_text_file" in response
+    assert "create_directory" in response
+    assert "write_text_file" in response
 
 
 def test_low_risk_calculator_executes_immediately(
     app: AtlasApp,
 ) -> None:
-    """Low-risk tools should execute without confirmation."""
+    """Low-risk tools should execute immediately."""
     response = app.process_message('tool calculator {"expression": "12 * 4"}')
 
     assert response == "Tool calculator result: 48"
     assert app.has_pending_tool_request is False
 
 
-def test_current_time_executes_immediately(
+def test_list_directory_executes_immediately(
     app: AtlasApp,
+    workspace: Path,
 ) -> None:
-    """The low-risk current-time tool should execute immediately."""
-    response = app.process_message("tool current_time {}")
-
-    assert response.startswith("Tool current_time result:")
-    assert app.has_pending_tool_request is False
-
-
-def test_medium_risk_tool_waits_for_confirmation(
-    app: AtlasApp,
-) -> None:
-    """Medium-risk tools should pause before execution."""
-    response = app.process_message('tool confirmation_demo {"message": "Approved action"}')
-
-    assert "Tool confirmation_demo requires confirmation." in response
-    assert "Risk level: medium." in response
-    assert "confirm yes" in response
-    assert "confirm no" in response
-    assert app.has_pending_tool_request is True
-
-
-def test_confirmation_approval_executes_pending_tool(
-    app: AtlasApp,
-) -> None:
-    """Approval should execute the pending tool."""
-    request_response = app.process_message(
-        'tool confirmation_demo {"message": "Permission granted"}'
+    """Directory listing should not require approval."""
+    (workspace / "notes.txt").write_text(
+        "ATLAS",
+        encoding="utf-8",
     )
 
-    assert "requires confirmation" in request_response
-    assert app.has_pending_tool_request is True
+    response = app.process_message('tool list_directory {"path": "."}')
 
-    confirmation_response = app.process_message("confirm yes")
-
-    assert confirmation_response == ("Tool confirmation_demo result: Permission granted")
+    assert "Tool list_directory result:" in response
+    assert "notes.txt" in response
     assert app.has_pending_tool_request is False
 
 
-def test_confirmation_denial_blocks_pending_tool(
+def test_file_info_executes_immediately(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Metadata inspection should not require approval."""
+    (workspace / "rocket.txt").write_text(
+        "Wraith",
+        encoding="utf-8",
+    )
+
+    response = app.process_message('tool file_info {"path": "rocket.txt"}')
+
+    assert "Tool file_info result:" in response
+    assert "Name: rocket.txt" in response
+    assert "Size: 6 bytes" in response
+    assert app.has_pending_tool_request is False
+
+
+def test_read_text_file_executes_immediately(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Reading a scoped text file should be low risk."""
+    (workspace / "notes.txt").write_text(
+        "Project ATLAS",
+        encoding="utf-8",
+    )
+
+    response = app.process_message('tool read_text_file {"path": "notes.txt"}')
+
+    assert response == ("Tool read_text_file result: Project ATLAS")
+    assert app.has_pending_tool_request is False
+
+
+def test_read_text_file_rejects_scope_escape(
     app: AtlasApp,
 ) -> None:
-    """Denial should clear the request without execution."""
-    app.process_message('tool confirmation_demo {"message": "Do not execute"}')
+    """ATLAS should prevent path traversal."""
+    response = app.process_message('tool read_text_file {"path": "../outside.txt"}')
 
+    assert "Tool input was invalid:" in response
+    assert "outside" in response.lower()
+    assert app.has_pending_tool_request is False
+
+
+def test_create_directory_requires_confirmation(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Directory creation should pause before execution."""
+    response = app.process_message('tool create_directory {"path": "Rocket Design"}')
+
+    assert "Tool create_directory requires confirmation." in response
     assert app.has_pending_tool_request is True
+    assert not (workspace / "Rocket Design").exists()
+
+
+def test_create_directory_approval_executes_request(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Approval should create the pending directory."""
+    app.process_message('tool create_directory {"path": "Rocket Design"}')
+
+    response = app.process_message("confirm yes")
+
+    assert response == ("Tool create_directory result: Created directory: Rocket Design")
+    assert (workspace / "Rocket Design").is_dir()
+    assert app.has_pending_tool_request is False
+
+
+def test_create_directory_denial_prevents_change(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Denial should prevent directory creation."""
+    app.process_message('tool create_directory {"path": "Denied Directory"}')
 
     response = app.process_message("confirm no")
 
-    assert response == ("Tool confirmation_demo execution was denied.")
+    assert response == ("Tool create_directory execution was denied.")
+    assert not (workspace / "Denied Directory").exists()
     assert app.has_pending_tool_request is False
+
+
+def test_write_text_file_requires_confirmation(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Writing a file should pause before execution."""
+    response = app.process_message(
+        'tool write_text_file {"path": "notes.txt", "content": "Project ATLAS"}'
+    )
+
+    assert "Tool write_text_file requires confirmation." in response
+    assert not (workspace / "notes.txt").exists()
+    assert app.has_pending_tool_request is True
+
+
+def test_write_text_file_approval_creates_file(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Approval should execute the pending write."""
+    app.process_message('tool write_text_file {"path": "notes.txt", "content": "Project ATLAS"}')
+
+    response = app.process_message("confirm yes")
+
+    assert "Created file: notes.txt" in response
+    assert (workspace / "notes.txt").read_text(encoding="utf-8") == "Project ATLAS"
+    assert app.has_pending_tool_request is False
+
+
+def test_write_text_file_denial_prevents_file_creation(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """Denied writes should not create files."""
+    app.process_message('tool write_text_file {"path": "denied.txt", "content": "Do not write"}')
+
+    response = app.process_message("confirm no")
+
+    assert response == ("Tool write_text_file execution was denied.")
+    assert not (workspace / "denied.txt").exists()
+
+
+def test_medium_risk_tool_rejects_invalid_arguments_before_confirmation(
+    app: AtlasApp,
+) -> None:
+    """Invalid writes should fail before permission checks."""
+    response = app.process_message('tool write_text_file {"path": "notes.txt"}')
+
+    assert "Tool input was invalid:" in response
+    assert "content" in response
+    assert app.has_pending_tool_request is False
+
+
+def test_tool_rejects_unknown_argument_before_permission(
+    app: AtlasApp,
+) -> None:
+    """Unknown arguments should fail before confirmation."""
+    response = app.process_message('tool create_directory {"path": "designs", "unexpected": true}')
+
+    assert "Tool input was invalid:" in response
+    assert "Unknown argument" in response
+    assert app.has_pending_tool_request is False
+
+
+def test_invalid_overwrite_type_fails_before_confirmation(
+    app: AtlasApp,
+) -> None:
+    """Invalid boolean arguments should not become pending."""
+    response = app.process_message(
+        'tool write_text_file {"path": "notes.txt", "content": "ATLAS", "overwrite": "yes"}'
+    )
+
+    assert "Tool input was invalid:" in response
+    assert "boolean" in response
+    assert app.has_pending_tool_request is False
+
+
+def test_second_pending_request_does_not_replace_first(
+    app: AtlasApp,
+    workspace: Path,
+) -> None:
+    """A new request should not overwrite pending state."""
+    app.process_message('tool create_directory {"path": "First Directory"}')
+
+    second_response = app.process_message('tool create_directory {"path": "Second Directory"}')
+
+    assert "Another tool request is already awaiting confirmation." in second_response
+
+    app.process_message("confirm yes")
+
+    assert (workspace / "First Directory").is_dir()
+    assert not (workspace / "Second Directory").exists()
 
 
 def test_confirmation_without_pending_request_is_rejected(
     app: AtlasApp,
 ) -> None:
-    """Confirmation should fail safely when nothing is pending."""
+    """Confirmation should fail when nothing is pending."""
     response = app.process_message("confirm yes")
 
-    assert response == "There is no pending tool request."
-    assert app.has_pending_tool_request is False
+    assert response == ("There is no pending tool request.")
 
 
 def test_invalid_confirmation_input_is_rejected(
     app: AtlasApp,
 ) -> None:
-    """Unclear confirmation input should not execute a tool."""
-    app.process_message('tool confirmation_demo {"message": "Pending action"}')
+    """Unclear confirmation should not execute."""
+    app.process_message('tool create_directory {"path": "Pending Directory"}')
 
     response = app.process_message("confirm maybe")
 
     assert response == ("Confirmation must be either 'confirm yes' or 'confirm no'.")
     assert app.has_pending_tool_request is True
-
-
-def test_second_pending_request_does_not_replace_first(
-    app: AtlasApp,
-) -> None:
-    """A second request should not overwrite pending state."""
-    first_response = app.process_message('tool confirmation_demo {"message": "First action"}')
-
-    assert "requires confirmation" in first_response
-    assert app.has_pending_tool_request is True
-
-    second_response = app.process_message('tool confirmation_demo {"message": "Second action"}')
-
-    assert "Another tool request is already awaiting confirmation." in second_response
-
-    confirmation_response = app.process_message("confirm yes")
-
-    assert confirmation_response == ("Tool confirmation_demo result: First action")
-    assert app.has_pending_tool_request is False
 
 
 def test_invalid_tool_json_is_rejected(
@@ -312,7 +470,7 @@ def test_invalid_tool_json_is_rejected(
 def test_tool_arguments_must_be_json_object(
     app: AtlasApp,
 ) -> None:
-    """Tool arguments should require a JSON object."""
+    """Tool arguments should require an object."""
     response = app.process_message('tool calculator ["2 + 2"]')
 
     assert response == ("Tool arguments must be a JSON object.")
@@ -321,7 +479,7 @@ def test_tool_arguments_must_be_json_object(
 def test_unknown_tool_is_rejected(
     app: AtlasApp,
 ) -> None:
-    """Unknown tools should not reach permission evaluation."""
+    """Unknown tools should be rejected safely."""
     response = app.process_message("tool unknown_tool {}")
 
     assert "not registered" in response

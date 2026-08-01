@@ -38,3 +38,7 @@ dist/
 # Operating-system files
 .DS_Store
 Thumbs.db
+
+# Local ATLAS workspace contents
+workspace/*
+!workspace/.gitkeep
