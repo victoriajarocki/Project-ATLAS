@@ -12,6 +12,7 @@ from atlas.tools.base import (
 )
 from atlas.tools.builtin import (
     CalculatorTool,
+    ConfirmationDemoTool,
     CurrentTimeTool,
 )
 from atlas.tools.executor import ToolExecutor
@@ -19,6 +20,7 @@ from atlas.tools.registry import ToolRegistry
 
 __all__ = [
     "CalculatorTool",
+    "ConfirmationDemoTool",
     "CurrentTimeTool",
     "Tool",
     "ToolDefinition",

@@ -8,7 +8,7 @@
 
 ---
 
-![Version](https://img.shields.io/badge/version-v0.7.0-blue)
+![Version](https://img.shields.io/badge/version-v0.8.0-blue)
 ![Python](https://img.shields.io/badge/python-3.13+-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-informational)
 ![ATLAS CI](https://github.com/victoriajarocki/Project-ATLAS/actions/workflows/ci.yml/badge.svg)
@@ -282,9 +282,11 @@ Detailed project documentation is available in:
 - [Development Guide](docs/development.md)
 - [Configuration Reference](docs/configuration.md)
 - [Tool System](docs/tools.md)
+- [Permission System](docs/permissions.md)
 - [Architecture](ARCHITECTURE.md)
 - [Roadmap](ROADMAP.md)
 - [Changelog](CHANGELOG.md)
+- [GitHub Releases](https://github.com/victoriajarocki/Project-ATLAS/releases)
 
 ---
 
@@ -292,7 +294,7 @@ Detailed project documentation is available in:
 
 Current Release
 
-**v0.7.0**
+**v0.8.0**
 
 Recent additions include:
 

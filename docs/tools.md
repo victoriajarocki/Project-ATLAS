@@ -28,16 +28,21 @@ Only registered tools can be executed.
 
 ## Current Tools
 
-ATLAS v0.7.0 includes two built-in low-risk tools:
+ATLAS v0.8.0 includes three built-in tools:
 
 - `calculator`
 - `current_time`
+- `confirmation_demo`
 
 List registered tools from the ATLAS CLI:
 
 ```text
 tools
 ```
+
+The calculator and current-time tools are low risk and execute immediately.
+
+The confirmation demonstration tool is medium risk and requires explicit approval.
 
 ---
 
@@ -106,6 +111,53 @@ The tool accepts no arguments.
 
 ---
 
+## Confirmation Demonstration Tool
+
+The `confirmation_demo` tool validates the ATLAS permission and confirmation workflow without modifying files or controlling the operating system.
+
+Example request:
+
+```text
+tool confirmation_demo {"message": "Approved action"}
+```
+
+ATLAS pauses and requests confirmation.
+
+Approve:
+
+```text
+confirm yes
+```
+
+Expected result:
+
+```text
+Tool confirmation_demo result: Approved action
+```
+
+Deny:
+
+```text
+confirm no
+```
+
+Expected result:
+
+```text
+Tool confirmation_demo execution was denied.
+```
+
+Definition metadata:
+
+```text
+Risk level: medium
+Confirmation required: yes
+```
+
+This demonstration tool is intended for development and security testing.
+
+---
+
 ## Tool Interface
 
 Every ATLAS tool implements the abstract `Tool` interface.
@@ -171,6 +223,8 @@ Tool names should be:
 ---
 
 ## Tool Risk Levels
+
+Risk metadata is enforced by the ATLAS permission system before execution. It is no longer descriptive metadata only.
 
 ATLAS defines three tool-risk levels:
 
@@ -271,6 +325,72 @@ The executor:
 Tool arguments should not be written to logs when they may contain sensitive information.
 
 ---
+
+## Permission-Controlled Execution
+
+Starting with ATLAS v0.8.0, registering a tool does not automatically authorize its execution.
+
+Every explicit tool request follows this sequence:
+
+```text
+Tool command
+    ↓
+JSON validation
+    ↓
+Tool registry lookup
+    ↓
+Permission evaluation
+    ↓
+Allow, confirm, or deny
+    ↓
+Tool executor
+```
+
+The permission system evaluates:
+
+- `risk_level`
+- `requires_confirmation`
+- The active permission policy
+
+### Allow
+
+Low-risk tools that do not require confirmation execute immediately.
+
+Example:
+
+```text
+tool calculator {"expression": "2 + 2"}
+```
+
+### Confirm
+
+Medium-risk tools and tools explicitly marked for confirmation pause before execution.
+
+Example:
+
+```text
+tool confirmation_demo {"message": "Approved action"}
+```
+
+Approve:
+
+```text
+confirm yes
+```
+
+Deny:
+
+```text
+confirm no
+```
+
+### Deny
+
+High-risk tools are denied by the default v0.8.0 policy.
+
+Denied tools do not reach `ToolExecutor.execute()`.
+
+For the complete design, see [Permission System](permissions.md).
 
 ## Tool Results
 
@@ -391,6 +511,17 @@ tool_registry.register(ExampleTool())
 
 Add tests before considering the tool complete.
 
+Before registering a new tool, verify:
+
+- [ ] The risk level is accurate.
+- [ ] `requires_confirmation` is accurate.
+- [ ] All arguments are validated.
+- [ ] Unknown arguments are rejected where appropriate.
+- [ ] Sensitive arguments are not logged.
+- [ ] Permission-policy behavior is tested.
+- [ ] Approval and denial behavior is tested when confirmation is required.
+- [ ] High-impact actions fail safely.
+
 ---
 
 ## Tool Test Requirements
@@ -444,14 +575,15 @@ Every tool must:
 
 Future tool-system work includes:
 
-- Permission policies
-- Confirmation prompts
 - File-system tools
 - Application-launching tools
 - Web research tools
 - Model-directed tool selection
 - Multi-tool workflows
 - Plugin discovery
+- Scoped permission grants
 - Hardware and robotics tools
 
-File-system, terminal, and hardware tools will not be added until appropriate permission and safety controls are available.
+File-system, terminal, external-service, and hardware tools will build on the v0.8.0 permission system.
+
+High-risk tools remain denied until stronger authorization and safety controls are implemented.

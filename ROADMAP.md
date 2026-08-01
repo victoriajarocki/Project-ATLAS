@@ -8,7 +8,7 @@ Each release expands the capabilities of the ATLAS platform while maintaining mo
 
 ## Current Version
 
-v0.7.0
+v0.8.0
 
 Completed
 

@@ -20,16 +20,19 @@ from atlas.observability.logging import (
     LoggingConfigurationError,
     configure_logging,
 )
+from atlas.permissions.policy import PermissionPolicy
+from atlas.permissions.service import PermissionService
 from atlas.tools.base import ToolError
 from atlas.tools.builtin import (
     CalculatorTool,
+    ConfirmationDemoTool,
     CurrentTimeTool,
 )
 from atlas.tools.executor import ToolExecutor
 from atlas.tools.registry import ToolRegistry
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.7.0"
+ATLAS_VERSION = "0.8.0"
 EXIT_COMMANDS = {"exit", "quit", "shutdown"}
 
 logger = logging.getLogger(__name__)
@@ -44,6 +47,7 @@ def run_cli(app: AtlasApp) -> None:
     print(f"Persistent memory: {'Enabled' if app.memory_enabled else 'Disabled'}")
     print(f"Conversation sessions: {'Enabled' if app.conversations_enabled else 'Disabled'}")
     print(f"Tool system: {'Enabled' if app.tools_enabled else 'Disabled'}")
+    print(f"Permission system: {'Enabled' if app.permissions_enabled else 'Disabled'}")
 
     if app.active_conversation_id is not None:
         print(f"Active chat: {app.active_conversation_id}")
@@ -65,6 +69,9 @@ def run_cli(app: AtlasApp) -> None:
     print("  tools")
     print('  tool calculator {"expression": "2 + 2"}')
     print("  tool current_time {}")
+    print('  tool confirmation_demo {"message": "Approved action"}')
+    print("  confirm yes")
+    print("  confirm no")
     print()
     print("  exit")
     print()
@@ -131,6 +138,7 @@ def create_app(settings: Settings) -> AtlasApp:
     tool_registry = ToolRegistry()
     tool_registry.register(CalculatorTool())
     tool_registry.register(CurrentTimeTool())
+    tool_registry.register(ConfirmationDemoTool())
 
     tool_executor = ToolExecutor(tool_registry)
 
@@ -139,11 +147,17 @@ def create_app(settings: Settings) -> AtlasApp:
         len(tool_registry.list_definitions()),
     )
 
+    permission_policy = PermissionPolicy()
+    permission_service = PermissionService(permission_policy)
+
+    logger.info("Permission system initialized.")
+
     app = AtlasApp(
         model_provider=provider,
         memory_service=memory_service,
         conversation_service=conversation_service,
         tool_executor=tool_executor,
+        permission_service=permission_service,
     )
 
     logger.info("ATLAS application created successfully.")
