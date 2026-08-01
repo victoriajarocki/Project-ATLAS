@@ -27,8 +27,9 @@ Examples include:
 - AI Models
 - Memory
 - Conversations
+- Observability
 - Permissions
-- Logging
+- Filesystem
 - Tools
 - Voice
 - Vision
@@ -42,14 +43,15 @@ This allows components to evolve independently while minimizing breaking changes
 
 ## 2. Local-First
 
-Whenever practical, user information should remain on the local machine.
+Whenever practical, user information and execution should remain on the local machine.
 
 Current examples include:
 
 - SQLite memory database
-- Conversation database
+- SQLite conversation database
 - Ollama local inference
 - Local log files
+- Scoped local filesystem access
 
 Cloud providers remain optional rather than mandatory.
 
@@ -67,6 +69,7 @@ Examples include:
 - Conversation history
 - Log files
 - Local documents
+- Filesystem workspace contents
 
 Future cloud integrations should require explicit user authorization.
 
@@ -81,6 +84,7 @@ The architecture should support:
 - Additional AI providers
 - New tools
 - New memory systems
+- New filesystem capabilities
 - Desktop interfaces
 - Voice interfaces
 - Vision systems
@@ -137,6 +141,9 @@ Current system overview:
                Tool Registry
                       │
                       ▼
+          Shared Argument Validation
+                      │
+                      ▼
              Permission Service
                       │
                       ▼
@@ -155,11 +162,20 @@ Current system overview:
                       │
                       ▼
                 Tool Modules
+                      │
+                      ▼
+          Filesystem Service Layer
+                      │
+                      ▼
+             Scoped Path Resolver
+                      │
+                      ▼
+         Configured Allowed Directory
 ```
 
 All major operations are observed through the structured logging subsystem.
 
-ATLAS Core is responsible for coordinating the interactions between subsystems.
+ATLAS Core is responsible for coordinating interactions between subsystems.
 
 Individual subsystems should not directly coordinate unrelated subsystems.
 
@@ -182,28 +198,53 @@ This minimizes coupling while making future refactoring significantly easier.
 ```text
 Project-ATLAS/
 │
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── docs/
+│   ├── configuration.md
+│   ├── development.md
+│   ├── filesystem.md
+│   ├── installation.md
+│   ├── permissions.md
+│   └── tools.md
+│
 ├── src/
 │   └── atlas/
 │       ├── config/
 │       ├── conversations/
 │       ├── core/
+│       ├── filesystem/
 │       ├── memory/
 │       ├── models/
 │       ├── observability/
 │       ├── permissions/
-│       ├── security/
 │       └── tools/
 │
 ├── tests/
+│   ├── test_app.py
+│   ├── test_conversations.py
+│   ├── test_filesystem.py
+│   ├── test_main.py
+│   ├── test_memory.py
+│   ├── test_models.py
+│   ├── test_observability.py
+│   ├── test_permissions.py
+│   ├── test_tool_validation.py
+│   └── test_tools.py
 │
-├── docs/
+├── workspace/
+│   └── .gitkeep
 │
-├── README.md
-├── CHANGELOG.md
-├── ROADMAP.md
+├── .env.example
+├── .gitignore
 ├── ARCHITECTURE.md
+├── CHANGELOG.md
+├── LICENSE
 ├── pyproject.toml
-└── .env.example
+├── README.md
+└── ROADMAP.md
 ```
 
 The repository is organized around major architectural subsystems rather than implementation layers.
@@ -212,9 +253,10 @@ Each subsystem owns its own:
 
 - Models
 - Services
-- Database interfaces
 - Validation
+- Exceptions
 - Tests
+- Documentation
 
 This keeps responsibilities localized and makes large-scale expansion significantly easier.
 
@@ -222,7 +264,7 @@ This keeps responsibilities localized and makes large-scale expansion significan
 
 # Subsystem Overview
 
-# Configuration
+## Configuration
 
 Location:
 
@@ -237,6 +279,15 @@ Responsibilities:
 - Validate configuration
 - Provide strongly typed settings
 - Centralize runtime configuration
+- Configure filesystem boundaries and size limits
+
+Current filesystem settings include:
+
+```text
+ATLAS_ALLOWED_DIRECTORIES
+ATLAS_FILESYSTEM_MAX_READ_BYTES
+ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS
+```
 
 The configuration subsystem is intentionally isolated from application logic.
 
@@ -246,7 +297,7 @@ This improves testing, portability, and future deployment flexibility.
 
 ---
 
-# Core
+## Core
 
 Location:
 
@@ -265,16 +316,19 @@ Responsibilities:
 - Coordinate memory
 - Coordinate permissions
 - Coordinate tools
+- Enforce validation before authorization
 
-ATLAS Core intentionally contains very little business logic.
+ATLAS Core intentionally contains very little subsystem-specific business logic.
 
-Instead, it orchestrates specialized subsystems.
+Instead, it orchestrates specialized services.
 
 Current responsibilities include:
 
 - Processing normal AI conversations
 - Processing built-in commands
 - Processing tool requests
+- Parsing tool arguments
+- Triggering shared argument validation
 - Permission evaluation
 - Pending confirmation state
 - Tool execution
@@ -285,7 +339,7 @@ Future versions will expand the Core into a lightweight orchestration engine whi
 
 ---
 
-# Models
+## Models
 
 Location:
 
@@ -307,7 +361,7 @@ Current providers:
 - OpenAI Provider
 - Ollama Provider
 
-Future providers:
+Future providers may include:
 
 - Anthropic
 - Google Gemini
@@ -322,7 +376,7 @@ This allows providers to be swapped without changing application logic.
 
 ---
 
-# Memory
+## Memory
 
 Location:
 
@@ -357,7 +411,7 @@ Future versions will introduce semantic retrieval using embeddings.
 
 ---
 
-# Conversations
+## Conversations
 
 Location:
 
@@ -391,7 +445,7 @@ Future work includes:
 
 ---
 
-# Observability
+## Observability
 
 Location:
 
@@ -408,10 +462,22 @@ Responsibilities:
 - Error reporting
 - Startup logging
 - Shutdown logging
+- Tool and permission audit records
 
 Logging is designed for both debugging and operational diagnostics.
 
 Sensitive information should never appear in log files.
+
+Filesystem logs may include:
+
+- Resolved operation type
+- File or directory path
+- File size
+- Character count
+- Tool result
+- Execution duration
+
+Filesystem logs must not include complete file contents.
 
 Future observability work includes:
 
@@ -423,7 +489,7 @@ Future observability work includes:
 
 ---
 
-# Permissions
+## Permissions
 
 Location:
 
@@ -442,11 +508,11 @@ Responsibilities:
 
 Current components:
 
-- PermissionDecision
-- PermissionEvaluation
-- PendingToolRequest
-- PermissionPolicy
-- PermissionService
+- `PermissionDecision`
+- `PermissionEvaluation`
+- `PendingToolRequest`
+- `PermissionPolicy`
+- `PermissionService`
 
 Permission decisions:
 
@@ -458,8 +524,8 @@ deny
 
 Default policy:
 
-| Tool Condition | Decision |
-|----------------|----------|
+| Tool condition | Decision |
+|---|---|
 | Low risk without confirmation | Allow |
 | Medium risk | Confirm |
 | Explicit confirmation required | Confirm |
@@ -469,12 +535,22 @@ The permission subsystem never executes tools.
 
 Instead, it determines whether execution is permitted.
 
-ATLAS Core currently owns the temporary pending confirmation state and resolves:
+ATLAS Core currently owns temporary pending-confirmation state and resolves:
 
 ```text
 confirm yes
 confirm no
 ```
+
+Filesystem policy examples:
+
+| Tool | Risk | Behavior |
+|---|---|---|
+| `list_directory` | Low | Execute immediately |
+| `file_info` | Low | Execute immediately |
+| `read_text_file` | Low | Execute immediately |
+| `create_directory` | Medium | Require confirmation |
+| `write_text_file` | Medium | Require confirmation |
 
 Future capabilities include:
 
@@ -488,7 +564,146 @@ Future capabilities include:
 
 ---
 
-# Tool Framework
+## Filesystem
+
+Location:
+
+```text
+src/atlas/filesystem
+```
+
+Responsibilities:
+
+- Restrict filesystem access to configured directories
+- Resolve user-supplied paths safely
+- Prevent path traversal
+- Read UTF-8 text files
+- Write UTF-8 text files
+- Create directories
+- List directory contents
+- Inspect file and directory metadata
+- Enforce read and write limits
+- Normalize filesystem errors
+
+Current components:
+
+- `ScopedPathResolver`
+- `FileSystemService`
+- `FileSystemEntry`
+- `FileSystemEntryType`
+- `FileReadResult`
+- `FileWriteResult`
+- Filesystem-specific exceptions
+
+The filesystem subsystem does not own permission decisions.
+
+Its responsibility is to ensure that an already-authorized operation remains confined to an approved filesystem scope.
+
+### Scoped Path Resolver
+
+`ScopedPathResolver` converts a user path into a resolved absolute path and verifies that it remains inside at least one configured root.
+
+Conceptual flow:
+
+```text
+User path
+   ↓
+Trim and normalize
+   ↓
+Resolve relative or absolute location
+   ↓
+Canonicalize path
+   ↓
+Compare against allowed roots
+   ↓
+Allow or reject
+```
+
+Relative paths resolve against the first configured allowed directory.
+
+Absolute paths are accepted only when they remain inside an allowed root.
+
+Path traversal such as:
+
+```text
+../outside.txt
+```
+
+is rejected after canonical resolution.
+
+### FileSystemService
+
+`FileSystemService` provides the filesystem operations used by built-in tools.
+
+Current operations:
+
+- `list_directory`
+- `get_info`
+- `read_text_file`
+- `create_directory`
+- `write_text_file`
+
+The service enforces:
+
+- Existing-path checks
+- File-versus-directory checks
+- UTF-8 decoding
+- Maximum read size
+- Maximum write size
+- Explicit overwrite behavior
+- Scoped path resolution
+
+### Filesystem Models
+
+`FileSystemEntry` describes visible files and directories.
+
+It includes:
+
+- Entry name
+- Resolved path
+- Entry type
+- File size when applicable
+- Last-modified timestamp
+
+`FileReadResult` includes:
+
+- Resolved path
+- File content
+- Character count
+
+`FileWriteResult` includes:
+
+- Resolved path
+- Character count
+- Whether the file was newly created
+
+### Workspace Sandbox
+
+The default workspace is:
+
+```text
+workspace/
+```
+
+The directory is retained in Git through:
+
+```text
+workspace/.gitkeep
+```
+
+Workspace contents are excluded through `.gitignore`.
+
+The default configuration is:
+
+```dotenv
+ATLAS_ALLOWED_DIRECTORIES=workspace
+```
+
+Multiple directories may be configured using semicolon-separated values.
+
+---
+
+## Tool Framework
 
 Location:
 
@@ -498,7 +713,7 @@ src/atlas/tools
 
 Responsibilities:
 
-- Define the common Tool interface
+- Define the common `Tool` interface
 - Register available tools
 - Describe tool metadata
 - Validate arguments
@@ -507,18 +722,24 @@ Responsibilities:
 
 Current components:
 
-- Tool
-- ToolDefinition
-- ToolRegistry
-- ToolExecutor
-- ToolResult
-- ToolRiskLevel
+- `Tool`
+- `ToolDefinition`
+- `ToolRegistry`
+- `ToolExecutor`
+- `ToolResult`
+- `ToolRiskLevel`
+- Shared argument validator
 
 Current built-in tools:
 
 - Calculator
 - Current Time
 - Confirmation Demo
+- List Directory
+- File Information
+- Read Text File
+- Create Directory
+- Write Text File
 
 Tools declare:
 
@@ -526,18 +747,47 @@ Tools declare:
 - Parameter schema
 - Confirmation requirement
 
-The tool framework does **not** decide whether a tool is allowed to execute.
+The tool framework does not decide whether a tool is allowed to execute.
 
-Authorization belongs exclusively to the permission subsystem.
+Authorization belongs to the permission subsystem.
 
-Future built-in tools include:
+### Shared Argument Validation
 
-- File tools
-- Browser tools
-- Engineering tools
-- Calendar integrations
-- GitHub integrations
-- Robotics interfaces
+Location:
+
+```text
+src/atlas/tools/validation.py
+```
+
+The shared validator enforces supported JSON-schema fields before permission evaluation and again before execution.
+
+Current validation includes:
+
+- Root object schema
+- Required arguments
+- Unknown arguments
+- String values
+- Boolean values
+- Integer values
+- Number values
+- Object values
+- Array values
+- Null values
+- Enum values
+- Nested object schemas
+- Array item schemas
+
+This avoids duplicating basic schema validation inside every tool.
+
+Individual tools remain responsible for domain-specific validation.
+
+Examples include:
+
+- Arithmetic syntax restrictions
+- Filesystem path scope
+- UTF-8 requirements
+- File size limits
+- Existing-file overwrite behavior
 
 ---
 
@@ -574,11 +824,15 @@ ATLAS Core
   ↓
 Parse Command
   ↓
-Validate JSON
+Decode JSON
+  ↓
+Require JSON Object
   ↓
 Tool Registry
   ↓
 Retrieve Tool Definition
+  ↓
+Shared Argument Validation
   ↓
 Permission Service
   ↓
@@ -588,6 +842,10 @@ Allow / Confirm / Deny
   ↓
 Tool Executor
   ↓
+Defense-in-Depth Validation
+  ↓
+Tool Implementation
+  ↓
 Tool Result
   ↓
 User
@@ -595,14 +853,75 @@ User
 
 Important rules:
 
-- Invalid JSON never reaches the executor.
+- Invalid JSON never reaches the registry.
+- Non-object arguments are rejected.
 - Unknown tools never reach permission evaluation.
+- Invalid arguments never enter the confirmation workflow.
 - Denied tools never reach execution.
 - Confirmation-controlled tools remain pending until explicitly approved.
 - Approved requests execute exactly once.
 - Pending requests are cleared after approval or denial.
+- The executor validates arguments again immediately before execution.
 
-The permission system forms the security boundary between tool requests and tool execution.
+The permission system forms the authorization boundary between a valid tool request and tool execution.
+
+---
+
+# Filesystem Tool Flow
+
+Read-only filesystem operations follow:
+
+```text
+User
+  ↓
+ATLAS Core
+  ↓
+Shared Argument Validation
+  ↓
+Permission Decision: Allow
+  ↓
+Tool Executor
+  ↓
+Filesystem Tool
+  ↓
+FileSystemService
+  ↓
+ScopedPathResolver
+  ↓
+Allowed Workspace
+  ↓
+Result
+```
+
+State-changing filesystem operations follow:
+
+```text
+User
+  ↓
+ATLAS Core
+  ↓
+Shared Argument Validation
+  ↓
+Permission Decision: Confirm
+  ↓
+Pending Request
+  ↓
+User enters confirm yes or confirm no
+  ↓
+Approval or Denial
+  ↓
+Tool Executor
+  ↓
+Filesystem Tool
+  ↓
+FileSystemService
+  ↓
+ScopedPathResolver
+  ↓
+Allowed Workspace
+```
+
+A write or directory-creation request cannot modify the filesystem before explicit approval.
 
 ---
 
@@ -610,10 +929,14 @@ The permission system forms the security boundary between tool requests and tool
 
 Dependencies should point toward stable interfaces rather than concrete implementations.
 
-Current dependency direction:
+Current tool and filesystem dependency direction:
 
 ```text
 ATLAS Core
+    ↓
+Tool Registry
+    ↓
+Shared Argument Validator
     ↓
 Permission Service
     ↓
@@ -621,7 +944,11 @@ Permission Policy
     ↓
 Tool Executor
     ↓
-Registered Tool
+Filesystem Tool
+    ↓
+FileSystemService
+    ↓
+ScopedPathResolver
 ```
 
 Subsystems should avoid unnecessary cross-dependencies.
@@ -633,20 +960,22 @@ Memory
    ↓
 Models
    ↓
-Tools
+Filesystem
 ```
 
-Instead, coordination should occur through ATLAS Core.
+Instead, coordination should occur through ATLAS Core or another dedicated orchestration service.
 
-Tools declare their own metadata but must never authorize themselves.
+Tools declare their metadata but must never authorize themselves.
 
 Authorization belongs to the permission subsystem.
+
+Filesystem scope enforcement belongs to the filesystem subsystem.
 
 ---
 
 # Data Storage Architecture
 
-Project ATLAS separates long-term storage into multiple independent persistence layers.
+Project ATLAS separates long-term storage into independent persistence layers.
 
 Current storage architecture:
 
@@ -657,11 +986,25 @@ Current storage architecture:
       │                               │
  Persistent Memory             Conversations
       │                               │
-Memory Service            Conversation Service
+ Memory Service            Conversation Service
       │                               │
       └───────────────┬───────────────┘
                       │
                   ATLAS Core
+```
+
+The local filesystem workspace is separate from SQLite persistence:
+
+```text
+Configured Workspace
+        │
+ScopedPathResolver
+        │
+FileSystemService
+        │
+Filesystem Tools
+        │
+ATLAS Core
 ```
 
 Current persisted information:
@@ -669,6 +1012,7 @@ Current persisted information:
 - Long-term memories
 - Conversation metadata
 - Conversation messages
+- User-approved workspace files and directories
 
 Current non-persistent information:
 
@@ -702,6 +1046,7 @@ General rules:
 - Failures should be logged.
 - Sensitive information should never appear in exception messages.
 - Partial failures should not corrupt persistent state.
+- Invalid operations should not reach permission or execution unnecessarily.
 
 Current exception categories include:
 
@@ -711,6 +1056,14 @@ Current exception categories include:
 - Conversation errors
 - Tool errors
 - Permission errors
+- Filesystem errors
+
+Filesystem exception hierarchy includes:
+
+- `FileSystemError`
+- `FileSystemValidationError`
+- `PathOutsideAllowedScopeError`
+- `FileSystemOperationError`
 
 Future releases may introduce:
 
@@ -727,21 +1080,46 @@ Testing is organized by subsystem.
 
 ```text
 tests/
-
-├── test_models.py
-├── test_memory.py
+├── test_app.py
 ├── test_conversations.py
-├── test_tools.py
+├── test_filesystem.py
+├── test_main.py
+├── test_memory.py
+├── test_models.py
+├── test_observability.py
 ├── test_permissions.py
-└── test_app.py
+├── test_tool_validation.py
+└── test_tools.py
 ```
+
+Current test coverage includes:
+
+- Model provider behavior
+- Memory persistence
+- Conversation persistence
+- Structured logging
+- Permission decisions
+- Confirmation workflows
+- Tool registration
+- Shared schema validation
+- Filesystem path scope
+- Filesystem service behavior
+- Filesystem tool integration
+- Core orchestration
 
 Testing philosophy:
 
 - Unit tests validate individual components.
 - Integration tests validate subsystem interaction.
 - Core tests validate orchestration.
+- Security boundaries require explicit regression tests.
 - Every bug should eventually receive a regression test.
+
+Current v0.9.0 test suite:
+
+```text
+131 passing tests
+```
 
 Future testing additions include:
 
@@ -768,6 +1146,7 @@ Current logging includes:
 - Conversation operations
 - Tool execution
 - Permission decisions
+- Filesystem operations
 - Errors
 
 Future logging additions:
@@ -781,6 +1160,8 @@ Future logging additions:
 
 Logs should help developers understand system behavior without exposing private user information.
 
+Complete user messages, complete file contents, credentials, and secrets must not be written to logs.
+
 ---
 
 # Security Architecture
@@ -792,25 +1173,46 @@ Current layers:
 ```text
 User
    ↓
-Input Validation
-   ↓
 Command Parsing
+   ↓
+JSON Decoding
+   ↓
+Shared Argument Validation
    ↓
 Permission Evaluation
    ↓
 Authorized Tool Execution
+   ↓
+Filesystem Scope Enforcement
    ↓
 Structured Logging
 ```
 
 Principles:
 
-- Validation before execution
+- Validation before authorization
+- Authorization before execution
+- Scope enforcement inside the target subsystem
 - Least privilege
 - Explicit authorization
 - Safe defaults
 - Deny by default for high-risk actions
 - Audit significant operations
+- Defense-in-depth validation
+
+Filesystem-specific protections include:
+
+- Configured allowed roots
+- Canonical path resolution
+- Parent-traversal rejection
+- Absolute-path scope checks
+- UTF-8-only reads
+- Read-size limits
+- Write-size limits
+- Existing-file overwrite protection
+- Confirmation for state-changing operations
+- No deletion support in v0.9.0
+- No unrestricted shell execution
 
 Future work includes:
 
@@ -819,7 +1221,29 @@ Future work includes:
 - Trusted devices
 - Encrypted storage
 - Secure secrets management
+- Persistent scoped grants
 - Hardware safety controls
+
+---
+
+# Current Limitations
+
+ATLAS v0.9.0 intentionally limits filesystem functionality.
+
+Current limitations include:
+
+- Text files must be valid UTF-8
+- Binary file reading is not supported
+- File deletion is not supported
+- File renaming is not supported
+- File moving is not supported
+- File copying is not supported
+- Symbolic-link management is not exposed
+- Only configured directories are accessible
+- Persistent permission grants are not supported
+- Tool selection still requires explicit CLI commands
+
+These limitations keep the first filesystem release narrow, testable, and secure.
 
 ---
 
@@ -848,6 +1272,8 @@ Models   Memory  Conversations Vision  Planning  Knowledge
                      │
               Tool Registry
                      │
+          Shared Validation Layer
+                     │
               Permission System
                      │
         ┌────────────┼────────────┐
@@ -855,6 +1281,8 @@ Models   Memory  Conversations Vision  Planning  Knowledge
    Local Tools   Remote APIs   Hardware
         │            │            │
         └────────────┴────────────┘
+                     │
+          Scoped Resource Services
                      │
            Logging & Observability
 ```
@@ -873,6 +1301,7 @@ Current scalability goals include:
 - Larger memory stores
 - More conversations
 - Larger tool libraries
+- Multiple allowed filesystem roots
 
 Future scalability goals include:
 
@@ -922,7 +1351,11 @@ Operations should be visible through structured logging.
 
 ## Security
 
-Authorization should occur before execution.
+Validation and authorization should occur before execution.
+
+## Defense in Depth
+
+Critical boundaries should be checked at more than one layer.
 
 ## Extensibility
 
@@ -940,6 +1373,7 @@ It is intended to become a complete personal AI operating platform capable of:
 - Maintaining reliable long-term memory
 - Managing conversations
 - Safely executing tools
+- Interacting with scoped local files
 - Assisting with engineering workflows
 - Understanding documents
 - Speaking naturally
@@ -948,7 +1382,7 @@ It is intended to become a complete personal AI operating platform capable of:
 - Operating dedicated hardware
 - Supporting robotics
 
-Every release should strengthen the underlying architecture rather than increasing complexity.
+Every release should strengthen the underlying architecture rather than increasing unnecessary complexity.
 
 ---
 
@@ -966,28 +1400,31 @@ User Interfaces
 Application Services
         │
         ▼
+Shared Validation
+        │
+        ▼
 Permission System
         │
         ▼
 Tool Framework
         │
         ▼
-Infrastructure
+Scoped Resource Services
         │
         ▼
-Persistence
+Infrastructure and Persistence
 ```
 
 Each layer has a clearly defined responsibility.
 
 Higher layers coordinate behavior.
 
-Lower layers provide reusable capabilities.
+Lower layers provide reusable capabilities and enforce local safety boundaries.
 
-Maintaining this separation allows Project ATLAS to evolve from a command-line AI assistant into a secure, voice-first, multi-device AI operating platform without requiring major architectural redesigns.
+Maintaining this separation allows Project ATLAS to evolve from a command-line AI assistant into a secure, agent-driven, voice-first, multi-device AI operating platform without requiring major architectural redesigns.
 
 ---
 
-**Document Version:** ATLAS v0.8.0
+**Document Version:** ATLAS v0.9.0
 **Status:** Current Architecture
 **Last Updated:** August 2026

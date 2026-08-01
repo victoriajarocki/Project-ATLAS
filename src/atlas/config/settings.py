@@ -22,6 +22,9 @@ class Settings:
     log_level: str
     log_max_bytes: int
     log_backup_count: int
+    allowed_directories: tuple[Path, ...]
+    filesystem_max_read_bytes: int
+    filesystem_max_write_characters: int
 
 
 def load_settings() -> Settings:
@@ -80,6 +83,25 @@ def load_settings() -> Settings:
         minimum=0,
     )
 
+    allowed_directories = _load_allowed_directories(
+        os.getenv(
+            "ATLAS_ALLOWED_DIRECTORIES",
+            "workspace",
+        )
+    )
+
+    filesystem_max_read_bytes = _load_integer(
+        variable_name="ATLAS_FILESYSTEM_MAX_READ_BYTES",
+        default=1_000_000,
+        minimum=1,
+    )
+
+    filesystem_max_write_characters = _load_integer(
+        variable_name=("ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS"),
+        default=1_000_000,
+        minimum=1,
+    )
+
     if not model:
         raise ModelConfigurationError("ATLAS_MODEL cannot be empty.")
 
@@ -102,6 +124,9 @@ def load_settings() -> Settings:
         log_level=log_level,
         log_max_bytes=log_max_bytes,
         log_backup_count=log_backup_count,
+        allowed_directories=allowed_directories,
+        filesystem_max_read_bytes=(filesystem_max_read_bytes),
+        filesystem_max_write_characters=(filesystem_max_write_characters),
     )
 
 
@@ -125,3 +150,19 @@ def _load_integer(
         raise ModelConfigurationError(f"{variable_name} must be at least {minimum}.")
 
     return value
+
+
+def _load_allowed_directories(
+    raw_value: str,
+) -> tuple[Path, ...]:
+    """Load semicolon-separated allowed directories."""
+    values = [value.strip() for value in raw_value.split(";") if value.strip()]
+
+    if not values:
+        raise ModelConfigurationError(
+            "ATLAS_ALLOWED_DIRECTORIES must contain at least one directory."
+        )
+
+    directories = tuple(Path(value).expanduser() for value in values)
+
+    return directories

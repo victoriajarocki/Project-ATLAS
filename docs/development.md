@@ -250,6 +250,39 @@ Tests that use databases should use temporary test paths rather than the real AT
 
 ---
 
+## Filesystem Testing
+
+Filesystem functionality should be tested independently from the operating system.
+
+Tests should use temporary directories created by pytest.
+
+Recommended coverage includes:
+
+- Allowed paths
+- Parent traversal
+- Outside-scope paths
+- Missing files
+- Missing directories
+- File-versus-directory validation
+- UTF-8 decoding
+- Read limits
+- Write limits
+- Overwrite protection
+
+Run only filesystem tests:
+
+```powershell
+pytest tests\test_filesystem.py
+```
+
+Run filesystem integration tests:
+
+```powershell
+pytest tests\test_app.py
+```
+
+---
+
 ## Complete Local Quality Check
 
 Before committing, run:
@@ -378,6 +411,7 @@ Every release should update:
 - `README.md`, when the displayed version or capabilities change
 - `ROADMAP.md`, when milestone status changes
 - Relevant files inside `docs/`
+- `ARCHITECTURE.md`, when subsystem architecture changes
 
 Release checklist:
 
@@ -388,12 +422,16 @@ Release checklist:
 [ ] Formatting passes
 [ ] mypy passes
 [ ] pytest passes
-[ ] Manual test passes
+[ ] Manual testing passes
 [ ] Version numbers match
-[ ] CHANGELOG.md is updated
-[ ] Documentation is updated
+[ ] README.md updated
+[ ] CHANGELOG.md updated
+[ ] ROADMAP.md updated
+[ ] ARCHITECTURE.md updated
+[ ] Relevant docs updated
 [ ] Sensitive files remain ignored
-[ ] Release commit is pushed
+[ ] Release commit pushed
+[ ] GitHub Release published
 ```
 
 ---
@@ -493,6 +531,47 @@ class ExampleTool(Tool):
         )
 ```
 
+---
+
+## Developing Filesystem Tools
+
+Filesystem tools should never interact with Python's `Path` objects directly.
+
+Instead, all filesystem operations must be routed through `FileSystemService`.
+
+Correct dependency chain:
+
+```text
+Filesystem Tool
+        │
+        ▼
+FileSystemService
+        │
+        ▼
+ScopedPathResolver
+        │
+        ▼
+Allowed Workspace
+```
+
+Every filesystem tool should:
+
+- Receive a `FileSystemService` through dependency injection
+- Validate domain-specific arguments
+- Never bypass `ScopedPathResolver`
+- Never access unrestricted filesystem paths
+- Never duplicate filesystem validation already provided by the service
+
+Examples include:
+
+- `ListDirectoryTool`
+- `FileInfoTool`
+- `ReadTextFileTool`
+- `CreateDirectoryTool`
+- `WriteTextFileTool`
+
+---
+
 ### Tool Security Checklist
 
 Before registering a tool:
@@ -513,6 +592,11 @@ Before registering a tool:
 [ ] Security-sensitive behavior is tested
 [ ] Permission behavior is tested
 [ ] Documentation is updated
+[ ] Uses shared argument validation
+[ ] Does not bypass ScopedPathResolver
+[ ] Uses injected services
+[ ] Does not duplicate authorization
+[ ] Resource limits enforced
 ```
 
 ### Risk Classification
@@ -553,7 +637,7 @@ Use when the tool:
 - Controls physical hardware
 - Could create safety consequences
 
-High-risk tools are denied by the default v0.8.0 policy.
+High-risk tools are denied by the default v0.9.0 policy.
 
 ### Permission Tests
 
@@ -568,6 +652,13 @@ For confirmation-controlled tools, test:
 - Invalid confirmation does not execute
 - A second request does not overwrite pending state
 
+Filesystem tools should also verify:
+- Allowed workspace access
+- Outside-scope rejection
+- UTF-8 validation
+- File size limits
+- Existing-file overwrite behavior
+
 For high-risk tools, test that the request never reaches the executor.
 
 See [Permission System](permissions.md) and [Tool System](tools.md).
@@ -578,9 +669,9 @@ When modifying permission or tool behavior, also run:
 pytest tests\test_permissions.py
 pytest tests\test_tools.py
 pytest tests\test_app.py
+```
 
 ---
-
 
 ## Add permission rules under Security Rules
 

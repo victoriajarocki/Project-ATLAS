@@ -99,7 +99,10 @@ class AtlasApp:
         """Report whether a tool request awaits confirmation."""
         return self._pending_tool_request is not None
 
-    def process_message(self, user_message: str) -> str:
+    def process_message(
+        self,
+        user_message: str,
+    ) -> str:
         """Process one user message and return ATLAS's response."""
         with request_context() as request_id:
             started_at = perf_counter()
@@ -130,9 +133,11 @@ class AtlasApp:
                 )
 
                 return response
+
             except Exception:
                 logger.exception("ATLAS failed while processing a request.")
                 raise
+
             finally:
                 elapsed_seconds = perf_counter() - started_at
 
@@ -265,7 +270,7 @@ class AtlasApp:
         self,
         command: str,
     ) -> str:
-        """Parse, authorize, and execute a tool command."""
+        """Parse, validate, authorize, and execute a tool."""
         if self._tool_executor is None:
             return "The tool system is not currently available."
 
@@ -291,6 +296,17 @@ class AtlasApp:
             tool = self._tool_executor.registry.get(tool_name)
         except ToolError as error:
             return f"The tool failed: {error}"
+
+        # Validate before permission evaluation. This prevents
+        # malformed medium-risk requests from entering the
+        # confirmation workflow.
+        try:
+            self._tool_executor.validate_arguments(
+                tool_name=tool.definition.name,
+                arguments=parsed_arguments,
+            )
+        except ToolValidationError as error:
+            return f"Tool input was invalid: {error}"
 
         if self._permission_service is None:
             logger.warning(
@@ -326,8 +342,9 @@ class AtlasApp:
             self._pending_tool_request = PendingToolRequest(
                 tool_name=tool.definition.name,
                 arguments=dict(parsed_arguments),
-                risk_level=tool.definition.risk_level,
+                risk_level=(tool.definition.risk_level),
             )
+
             self._pending_permission_evaluation = evaluation
 
             logger.info(
@@ -428,7 +445,10 @@ class AtlasApp:
 
         return f"Tool {result.tool_name} result: {result.output}"
 
-    def _remember(self, content: str) -> str:
+    def _remember(
+        self,
+        content: str,
+    ) -> str:
         """Save a user-requested memory."""
         if self._memory_service is None:
             return "Persistent memory is not currently available."
@@ -475,7 +495,10 @@ class AtlasApp:
 
         return "\n".join(lines)
 
-    def _forget(self, identifier: str) -> str:
+    def _forget(
+        self,
+        identifier: str,
+    ) -> str:
         """Delete a memory using its numeric ID."""
         if self._memory_service is None:
             return "Persistent memory is not currently available."
@@ -509,7 +532,10 @@ class AtlasApp:
 
         return f"Memory {memory_id} was deleted."
 
-    def _new_conversation(self, title: str) -> str:
+    def _new_conversation(
+        self,
+        title: str,
+    ) -> str:
         """Create and activate a conversation."""
         if self._conversation_service is None:
             return "Conversation sessions are not available."

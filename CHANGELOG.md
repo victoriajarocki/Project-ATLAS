@@ -14,12 +14,13 @@ The project follows semantic versioning:
 
 ### Planned
 
-- Permission and action-confirmation system
-- Medium-risk tool approval flow
-- File and application tools
-- Model-directed tool selection
+- Agent framework
+- Automatic tool selection
+- Multi-step task execution
+- Model-directed reasoning
 - Automatic conversation titles
 - Semantic memory retrieval
+- Web research tools
 
 ### Added
 
@@ -28,6 +29,91 @@ The project follows semantic versioning:
 - Automated Ruff formatting verification
 - Automated mypy static type checks
 - Automated pytest test execution
+
+---
+
+## [0.9.0] - 2026-08-01
+
+### Added
+
+- Secure filesystem subsystem
+- Scoped path resolver
+- FileSystemService
+- Configurable workspace directories
+- Directory listing tool
+- File information tool
+- Read text file tool
+- Write text file tool
+- Create directory tool
+- Shared JSON schema validator
+- Filesystem configuration settings
+- Filesystem integration tests
+- Filesystem documentation
+
+### Changed
+
+- Tool execution now validates arguments before permission evaluation
+- ToolExecutor now exposes reusable argument validation
+- Configuration system now supports filesystem settings
+- Tool registry now includes filesystem tools
+- Updated the command-line interface with filesystem commands
+- Updated the project version to 0.9.0
+
+### Security
+
+- Filesystem access is restricted to configured workspace directories
+- Path traversal attempts are rejected
+- Read and write limits are configurable
+- Medium-risk filesystem operations require confirmation
+- Read-only filesystem operations execute automatically
+- Filesystem activity is logged through structured audit logging
+
+### Notes
+
+- Filesystem support currently targets UTF-8 text files
+- File deletion and renaming are intentionally deferred
+- Future releases will expand filesystem capabilities
+
+---
+
+## [0.8.0] - 2026-08-01
+
+### Added
+
+- Permission decision models
+- Permission policy evaluator
+- Permission coordination service
+- Allow, confirm, and deny decisions
+- Confirmation-controlled tool execution
+- `confirm yes` command
+- `confirm no` command
+- Pending tool request state
+- Confirmation demonstration tool
+- Permission audit logging
+- Confirmation workflow tests
+- Permission subsystem documentation
+
+### Changed
+
+- Tool requests now pass through permission evaluation
+- Medium-risk tools require explicit approval
+- Confirmation-controlled tools pause before execution
+- Updated the command-line interface with confirmation commands
+- Updated the project version to 0.8.0
+
+### Security
+
+- High-risk tools are denied by default
+- Pending requests cannot be silently replaced
+- Tool arguments are excluded from permission logs
+- Confirmation is required before medium-risk execution
+- Permission decisions are fully audited
+
+### Notes
+
+- Permission decisions currently use static tool metadata
+- Persistent allow-always permissions are planned for a future release
+- Pending requests exist only in process memory
 
 ---
 

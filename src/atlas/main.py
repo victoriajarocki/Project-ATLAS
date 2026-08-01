@@ -9,6 +9,9 @@ from atlas.conversations.database import (
 )
 from atlas.conversations.service import ConversationService
 from atlas.core.app import AtlasApp
+from atlas.filesystem.exceptions import FileSystemError
+from atlas.filesystem.paths import ScopedPathResolver
+from atlas.filesystem.service import FileSystemService
 from atlas.memory.database import (
     MemoryDatabaseError,
     SQLiteMemoryRepository,
@@ -26,14 +29,25 @@ from atlas.tools.base import ToolError
 from atlas.tools.builtin import (
     CalculatorTool,
     ConfirmationDemoTool,
+    CreateDirectoryTool,
     CurrentTimeTool,
+    FileInfoTool,
+    ListDirectoryTool,
+    ReadTextFileTool,
+    WriteTextFileTool,
 )
 from atlas.tools.executor import ToolExecutor
 from atlas.tools.registry import ToolRegistry
 
 ATLAS_NAME = "ATLAS"
-ATLAS_VERSION = "0.8.0"
-EXIT_COMMANDS = {"exit", "quit", "shutdown"}
+
+ATLAS_VERSION = "0.9.0"
+
+EXIT_COMMANDS = {
+    "exit",
+    "quit",
+    "shutdown",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +67,13 @@ def run_cli(app: AtlasApp) -> None:
         print(f"Active chat: {app.active_conversation_id}")
 
     print("=" * 50)
+
     print("Memory commands:")
     print("  remember <information>")
     print("  memories")
     print("  forget <memory ID>")
     print()
+
     print("Conversation commands:")
     print("  new chat [title]")
     print("  chats")
@@ -65,14 +81,28 @@ def run_cli(app: AtlasApp) -> None:
     print("  rename chat <new title>")
     print("  history")
     print()
-    print("Tool commands:")
+
+    print("General tool commands:")
     print("  tools")
     print('  tool calculator {"expression": "2 + 2"}')
     print("  tool current_time {}")
     print('  tool confirmation_demo {"message": "Approved action"}')
+    print()
+
+    print("File-system tool commands:")
+    print('  tool list_directory {"path": "."}')
+    print('  tool file_info {"path": "example.txt"}')
+    print('  tool read_text_file {"path": "example.txt"}')
+    print('  tool create_directory {"path": "Rocket Design"}')
+    print('  tool write_text_file {"path": "notes.txt", "content": "ATLAS test file."}')
+    print()
+
+    print("Confirmation commands:")
     print("  confirm yes")
     print("  confirm no")
     print()
+
+    print("Session commands:")
     print("  exit")
     print()
 
@@ -97,6 +127,7 @@ def run_cli(app: AtlasApp) -> None:
             ModelError,
             ConversationDatabaseError,
             MemoryDatabaseError,
+            FileSystemError,
             ToolError,
         ) as error:
             logger.exception("ATLAS request failed in the CLI.")
@@ -128,17 +159,42 @@ def create_app(settings: Settings) -> AtlasApp:
     )
 
     conversation_repository = SQLiteConversationRepository(
-        database_path=settings.memory_database_path
+        database_path=(settings.memory_database_path)
     )
     conversation_service = ConversationService(conversation_repository)
     conversation_service.initialize()
 
     logger.info("Conversation sessions initialized.")
 
+    path_resolver = ScopedPathResolver(allowed_directories=(settings.allowed_directories))
+
+    filesystem_service = FileSystemService(
+        path_resolver=path_resolver,
+        max_read_bytes=(settings.filesystem_max_read_bytes),
+        max_write_characters=(settings.filesystem_max_write_characters),
+    )
+
+    logger.info(
+        "Scoped file-system service initialized. "
+        "allowed_directory_count=%d "
+        "max_read_bytes=%d "
+        "max_write_characters=%d",
+        len(filesystem_service.allowed_directories),
+        settings.filesystem_max_read_bytes,
+        settings.filesystem_max_write_characters,
+    )
+
     tool_registry = ToolRegistry()
+
     tool_registry.register(CalculatorTool())
     tool_registry.register(CurrentTimeTool())
     tool_registry.register(ConfirmationDemoTool())
+
+    tool_registry.register(ListDirectoryTool(filesystem_service))
+    tool_registry.register(FileInfoTool(filesystem_service))
+    tool_registry.register(ReadTextFileTool(filesystem_service))
+    tool_registry.register(CreateDirectoryTool(filesystem_service))
+    tool_registry.register(WriteTextFileTool(filesystem_service))
 
     tool_executor = ToolExecutor(tool_registry)
 
@@ -148,6 +204,7 @@ def create_app(settings: Settings) -> AtlasApp:
     )
 
     permission_policy = PermissionPolicy()
+
     permission_service = PermissionService(permission_policy)
 
     logger.info("Permission system initialized.")
@@ -174,7 +231,7 @@ def main() -> None:
             log_directory=settings.log_directory,
             log_level=settings.log_level,
             max_bytes=settings.log_max_bytes,
-            backup_count=settings.log_backup_count,
+            backup_count=(settings.log_backup_count),
         )
 
         logger.info(
@@ -185,11 +242,13 @@ def main() -> None:
         )
 
         app = create_app(settings)
+
         run_cli(app)
     except (
         ModelError,
         MemoryDatabaseError,
         ConversationDatabaseError,
+        FileSystemError,
         LoggingConfigurationError,
         ToolError,
     ) as error:
