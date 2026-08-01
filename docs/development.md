@@ -713,7 +713,7 @@ Do not log:
 
 ---
 
-## Security Rules
+## Never Commit
 
 Never commit:
 
@@ -722,8 +722,10 @@ Never commit:
 API keys
 passwords
 tokens
-local databases
+SQLite databases
+workspace user files
 private logs
+generated secrets
 ```
 
 Before pushing, verify:
