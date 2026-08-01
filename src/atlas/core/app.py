@@ -17,8 +17,15 @@ from atlas.memory.service import (
 )
 from atlas.models.base import ModelProvider
 from atlas.observability.logging import request_context
+from atlas.permissions.models import (
+    PendingToolRequest,
+    PermissionDecision,
+    PermissionEvaluation,
+)
+from atlas.permissions.service import PermissionService
 from atlas.tools.base import (
     ToolError,
+    ToolResult,
     ToolValidationError,
 )
 from atlas.tools.executor import ToolExecutor
@@ -29,86 +36,24 @@ logger = logging.getLogger(__name__)
 class AtlasApp:
     """Coordinate user requests with ATLAS subsystems."""
 
-    def _list_tools(self) -> str:
-        """Return a readable list of registered tools."""
-        if self._tool_executor is None:
-            return "The tool system is not currently available."
-
-        definitions = self._tool_executor.registry.list_definitions()
-
-        if not definitions:
-            return "No tools are currently registered."
-
-        lines = ["Registered tools:"]
-
-        for definition in definitions:
-            confirmation = (
-                "confirmation required"
-                if definition.requires_confirmation
-                else "no confirmation required"
-            )
-
-            lines.append(
-                f"- {definition.name} "
-                f"[risk: {definition.risk_level}] "
-                f"({confirmation}): "
-                f"{definition.description}"
-            )
-
-        return "\n".join(lines)
-
-    def _execute_tool_command(self, command: str) -> str:
-        """Parse and execute an explicit tool command."""
-        if self._tool_executor is None:
-            return "The tool system is not currently available."
-
-        cleaned_command = command.strip()
-
-        if not cleaned_command:
-            return "Use: tool <tool name> <JSON arguments>"
-
-        name_and_arguments = cleaned_command.split(maxsplit=1)
-        tool_name = name_and_arguments[0]
-
-        arguments_text = name_and_arguments[1] if len(name_and_arguments) == 2 else "{}"
-
-        try:
-            parsed_arguments: Any = json.loads(arguments_text)
-        except json.JSONDecodeError as error:
-            return f"Tool arguments must be valid JSON. JSON error: {error.msg}"
-
-        if not isinstance(parsed_arguments, dict):
-            return "Tool arguments must be a JSON object."
-
-        try:
-            result = self._tool_executor.execute(
-                tool_name=tool_name,
-                arguments=parsed_arguments,
-            )
-        except ToolValidationError as error:
-            return f"Tool input was invalid: {error}"
-        except ToolError as error:
-            return f"The tool failed: {error}"
-
-        if not result.success:
-            error_message = result.error or "The tool did not provide an error message."
-            return f"Tool {result.tool_name} failed: {error_message}"
-
-        return f"Tool {result.tool_name} result: {result.output}"
-
     def __init__(
         self,
         model_provider: ModelProvider,
         memory_service: MemoryService | None = None,
         conversation_service: ConversationService | None = None,
         tool_executor: ToolExecutor | None = None,
+        permission_service: PermissionService | None = None,
     ) -> None:
         """Initialize ATLAS with its configured subsystems."""
         self._model_provider = model_provider
         self._memory_service = memory_service
         self._conversation_service = conversation_service
-        self._active_conversation_id: int | None = None
         self._tool_executor = tool_executor
+        self._permission_service = permission_service
+
+        self._active_conversation_id: int | None = None
+        self._pending_tool_request: PendingToolRequest | None = None
+        self._pending_permission_evaluation: PermissionEvaluation | None = None
 
         if self._conversation_service is not None:
             conversation = self._conversation_service.get_or_create_latest()
@@ -125,11 +70,6 @@ class AtlasApp:
         return self._model_provider.provider_name
 
     @property
-    def tools_enabled(self) -> bool:
-        """Report whether the tool system is available."""
-        return self._tool_executor is not None
-
-    @property
     def memory_enabled(self) -> bool:
         """Report whether persistent memory is available."""
         return self._memory_service is not None
@@ -140,9 +80,24 @@ class AtlasApp:
         return self._conversation_service is not None
 
     @property
+    def tools_enabled(self) -> bool:
+        """Report whether the tool system is available."""
+        return self._tool_executor is not None
+
+    @property
+    def permissions_enabled(self) -> bool:
+        """Report whether permission controls are available."""
+        return self._permission_service is not None
+
+    @property
     def active_conversation_id(self) -> int | None:
         """Return the active conversation ID."""
         return self._active_conversation_id
+
+    @property
+    def has_pending_tool_request(self) -> bool:
+        """Report whether a tool request awaits confirmation."""
+        return self._pending_tool_request is not None
 
     def process_message(self, user_message: str) -> str:
         """Process one user message and return ATLAS's response."""
@@ -228,6 +183,15 @@ class AtlasApp:
         if lowered_message == "tools":
             return self._list_tools()
 
+        if lowered_message == "confirm yes":
+            return self._resolve_pending_tool(approved=True)
+
+        if lowered_message == "confirm no":
+            return self._resolve_pending_tool(approved=False)
+
+        if lowered_message.startswith("confirm "):
+            return "Confirmation must be either 'confirm yes' or 'confirm no'."
+
         if lowered_message.startswith("tool "):
             command = message[len("tool ") :]
             return self._execute_tool_command(command)
@@ -241,7 +205,7 @@ class AtlasApp:
         """Store, contextualize, and process a normal message."""
         if self._conversation_service is not None and self._active_conversation_id is not None:
             self._conversation_service.add_message(
-                conversation_id=self._active_conversation_id,
+                conversation_id=(self._active_conversation_id),
                 role="user",
                 content=user_message,
             )
@@ -252,11 +216,12 @@ class AtlasApp:
             )
 
         model_input = self._build_model_input(user_message)
+
         response = self._model_provider.generate_response(model_input)
 
         if self._conversation_service is not None and self._active_conversation_id is not None:
             self._conversation_service.add_message(
-                conversation_id=self._active_conversation_id,
+                conversation_id=(self._active_conversation_id),
                 role="assistant",
                 content=response,
             )
@@ -267,6 +232,201 @@ class AtlasApp:
             )
 
         return response
+
+    def _list_tools(self) -> str:
+        """Return a readable list of registered tools."""
+        if self._tool_executor is None:
+            return "The tool system is not currently available."
+
+        definitions = self._tool_executor.registry.list_definitions()
+
+        if not definitions:
+            return "No tools are currently registered."
+
+        lines = ["Registered tools:"]
+
+        for definition in definitions:
+            confirmation = (
+                "confirmation required"
+                if definition.requires_confirmation
+                else "no confirmation required"
+            )
+
+            lines.append(
+                f"- {definition.name} "
+                f"[risk: {definition.risk_level}] "
+                f"({confirmation}): "
+                f"{definition.description}"
+            )
+
+        return "\n".join(lines)
+
+    def _execute_tool_command(
+        self,
+        command: str,
+    ) -> str:
+        """Parse, authorize, and execute a tool command."""
+        if self._tool_executor is None:
+            return "The tool system is not currently available."
+
+        cleaned_command = command.strip()
+
+        if not cleaned_command:
+            return "Use: tool <tool name> <JSON arguments>"
+
+        name_and_arguments = cleaned_command.split(maxsplit=1)
+        tool_name = name_and_arguments[0]
+
+        arguments_text = name_and_arguments[1] if len(name_and_arguments) == 2 else "{}"
+
+        try:
+            parsed_arguments: Any = json.loads(arguments_text)
+        except json.JSONDecodeError as error:
+            return f"Tool arguments must be valid JSON. JSON error: {error.msg}"
+
+        if not isinstance(parsed_arguments, dict):
+            return "Tool arguments must be a JSON object."
+
+        try:
+            tool = self._tool_executor.registry.get(tool_name)
+        except ToolError as error:
+            return f"The tool failed: {error}"
+
+        if self._permission_service is None:
+            logger.warning(
+                "Executing tool without permission service. tool=%s",
+                tool.definition.name,
+            )
+
+            return self._execute_authorized_tool(
+                tool_name=tool.definition.name,
+                arguments=parsed_arguments,
+            )
+
+        evaluation = self._permission_service.evaluate(tool.definition)
+
+        if evaluation.decision is PermissionDecision.DENY:
+            logger.warning(
+                "Tool execution denied by policy. tool=%s risk=%s",
+                evaluation.tool_name,
+                evaluation.risk_level,
+            )
+
+            return f"Tool {evaluation.tool_name} was denied.\nReason: {evaluation.reason}"
+
+        if evaluation.decision is PermissionDecision.CONFIRM:
+            if self._pending_tool_request is not None:
+                return (
+                    "Another tool request is already awaiting "
+                    "confirmation. Use 'confirm yes' or "
+                    "'confirm no' before submitting another "
+                    "confirmation-controlled tool request."
+                )
+
+            self._pending_tool_request = PendingToolRequest(
+                tool_name=tool.definition.name,
+                arguments=dict(parsed_arguments),
+                risk_level=tool.definition.risk_level,
+            )
+            self._pending_permission_evaluation = evaluation
+
+            logger.info(
+                "Tool request is awaiting confirmation. tool=%s risk=%s",
+                evaluation.tool_name,
+                evaluation.risk_level,
+            )
+
+            return (
+                f"Tool {evaluation.tool_name} requires "
+                "confirmation.\n"
+                f"Risk level: {evaluation.risk_level}.\n"
+                f"Reason: {evaluation.reason}\n"
+                "Use 'confirm yes' to approve or "
+                "'confirm no' to deny."
+            )
+
+        return self._execute_authorized_tool(
+            tool_name=tool.definition.name,
+            arguments=parsed_arguments,
+        )
+
+    def _resolve_pending_tool(
+        self,
+        approved: bool,
+    ) -> str:
+        """Approve or deny the pending tool request."""
+        pending_request = self._pending_tool_request
+        evaluation = self._pending_permission_evaluation
+
+        if pending_request is None or evaluation is None:
+            self._clear_pending_tool_request()
+            return "There is no pending tool request."
+
+        if self._permission_service is not None:
+            self._permission_service.record_confirmation(
+                evaluation=evaluation,
+                approved=approved,
+            )
+
+        self._clear_pending_tool_request()
+
+        if not approved:
+            logger.info(
+                "Pending tool execution denied by user. tool=%s risk=%s",
+                pending_request.tool_name,
+                pending_request.risk_level,
+            )
+
+            return f"Tool {pending_request.tool_name} execution was denied."
+
+        logger.info(
+            "Pending tool execution approved by user. tool=%s risk=%s",
+            pending_request.tool_name,
+            pending_request.risk_level,
+        )
+
+        return self._execute_authorized_tool(
+            tool_name=pending_request.tool_name,
+            arguments=pending_request.arguments,
+        )
+
+    def _clear_pending_tool_request(self) -> None:
+        """Clear all pending confirmation state."""
+        self._pending_tool_request = None
+        self._pending_permission_evaluation = None
+
+    def _execute_authorized_tool(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+    ) -> str:
+        """Execute a tool after authorization succeeds."""
+        if self._tool_executor is None:
+            return "The tool system is not currently available."
+
+        try:
+            result = self._tool_executor.execute(
+                tool_name=tool_name,
+                arguments=arguments,
+            )
+        except ToolValidationError as error:
+            return f"Tool input was invalid: {error}"
+        except ToolError as error:
+            return f"The tool failed: {error}"
+
+        return self._format_tool_result(result)
+
+    @staticmethod
+    def _format_tool_result(
+        result: ToolResult,
+    ) -> str:
+        """Format a structured tool result for the user."""
+        if not result.success:
+            error_message = result.error or ("The tool did not provide an error message.")
+
+            return f"Tool {result.tool_name} failed: {error_message}"
+
+        return f"Tool {result.tool_name} result: {result.output}"
 
     def _remember(self, content: str) -> str:
         """Save a user-requested memory."""
@@ -432,14 +592,17 @@ class AtlasApp:
 
         return f"Switched to chat {conversation.id}: {conversation.title}"
 
-    def _rename_conversation(self, title: str) -> str:
+    def _rename_conversation(
+        self,
+        title: str,
+    ) -> str:
         """Rename the active conversation."""
         if self._conversation_service is None or self._active_conversation_id is None:
             return "There is no active conversation to rename."
 
         try:
             renamed = self._conversation_service.rename_conversation(
-                conversation_id=self._active_conversation_id,
+                conversation_id=(self._active_conversation_id),
                 title=title,
             )
         except ConversationValidationError as error:
@@ -473,7 +636,7 @@ class AtlasApp:
 
         try:
             messages = self._conversation_service.list_messages(
-                conversation_id=self._active_conversation_id,
+                conversation_id=(self._active_conversation_id),
                 limit=20,
             )
         except ConversationDatabaseError as error:

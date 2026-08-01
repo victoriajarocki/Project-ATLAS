@@ -452,17 +452,150 @@ Then:
 
 A tool must implement the `Tool` interface.
 
-Each tool must provide:
+Every tool must provide:
 
 - A unique name
-- A description
+- A clear description
 - A parameter schema
 - A risk classification
 - Confirmation metadata
-- Input validation
+- Strict input validation
 - A structured `ToolResult`
 
-See [Tool System](tools.md) for the complete tool-development workflow.
+Example structure:
+
+```python
+class ExampleTool(Tool):
+    @property
+    def definition(self) -> ToolDefinition:
+        """Return the tool definition."""
+        return ToolDefinition(
+            name="example",
+            description="Perform an example operation.",
+            parameters={
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False,
+            },
+            risk_level=ToolRiskLevel.LOW,
+            requires_confirmation=False,
+        )
+
+    def execute(
+        self,
+        arguments: dict[str, Any],
+    ) -> ToolResult:
+        """Execute the example operation."""
+        return ToolResult(
+            tool_name=self.definition.name,
+            success=True,
+            output="Example result.",
+        )
+```
+
+### Tool Security Checklist
+
+Before registering a tool:
+
+```text
+[ ] Tool name is unique and stable
+[ ] Description accurately explains behavior
+[ ] Parameter schema is complete
+[ ] Unknown parameters are rejected when appropriate
+[ ] Input types are validated
+[ ] Resource limits are enforced
+[ ] Risk level is accurate
+[ ] Confirmation requirement is accurate
+[ ] Sensitive arguments are excluded from logs
+[ ] Tool cannot bypass the permission system
+[ ] Normal behavior is tested
+[ ] Invalid input is tested
+[ ] Security-sensitive behavior is tested
+[ ] Permission behavior is tested
+[ ] Documentation is updated
+```
+
+### Risk Classification
+
+Use the lowest accurate risk classification.
+
+#### Low Risk
+
+Use only when the tool:
+
+- Does not materially modify state
+- Does not expose sensitive information
+- Does not communicate externally
+- Does not control hardware
+- Is easy to reverse or has no persistent effect
+
+#### Medium Risk
+
+Use when the tool:
+
+- Modifies limited local state
+- Opens applications
+- Creates or renames resources
+- Performs an external but limited action
+- Requires explicit user awareness
+
+Medium-risk tools require confirmation under the default policy.
+
+#### High Risk
+
+Use when the tool:
+
+- Deletes or irreversibly modifies data
+- Executes unrestricted commands
+- Sends messages or transactions
+- Changes system configuration
+- Controls access systems
+- Controls physical hardware
+- Could create safety consequences
+
+High-risk tools are denied by the default v0.8.0 policy.
+
+### Permission Tests
+
+For low-risk tools, test that the tool executes immediately.
+
+For confirmation-controlled tools, test:
+
+- The initial request does not execute
+- A pending request is created
+- Approval executes the saved request
+- Denial prevents execution
+- Invalid confirmation does not execute
+- A second request does not overwrite pending state
+
+For high-risk tools, test that the request never reaches the executor.
+
+See [Permission System](permissions.md) and [Tool System](tools.md).
+
+When modifying permission or tool behavior, also run:
+
+```powershell
+pytest tests\test_permissions.py
+pytest tests\test_tools.py
+pytest tests\test_app.py
+
+---
+
+
+## Add permission rules under Security Rules
+
+Add:
+
+```markdown
+Permission-related code must follow these rules:
+
+- Authorization must occur before execution.
+- A tool must not authorize itself.
+- Denied requests must not reach the executor.
+- Confirmation-controlled requests must remain pending until explicitly approved.
+- Unclear approval input must fail safely.
+- Complete sensitive arguments must not be logged.
+- High-risk actions must remain denied until stronger controls exist.
 
 ---
 
@@ -572,3 +705,11 @@ A feature is complete only when:
 7. Documentation is updated.
 8. `CHANGELOG.md` is updated for a release.
 9. The feature is committed and pushed.
+
+[ ] Tool risk metadata is accurate
+[ ] Permission behavior is tested
+[ ] Confirmation behavior is tested when applicable
+[ ] Denied operations cannot reach execution
+[ ] Audit logging excludes sensitive arguments
+
+---

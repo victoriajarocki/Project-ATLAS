@@ -255,7 +255,7 @@ The startup screen should display the installed version and enabled subsystems.
 For example:
 
 ```text
-ATLAS v0.7.0
+ATLAS v0.8.0
 Model provider: Ollama
 Persistent memory: Enabled
 Conversation sessions: Enabled
