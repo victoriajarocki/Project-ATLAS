@@ -8,7 +8,7 @@
 
 ---
 
-![Version](https://img.shields.io/badge/version-v0.9.0-blue)
+![Version](https://img.shields.io/badge/version-v1.0.0-blue)
 ![Python](https://img.shields.io/badge/python-3.13+-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-informational)
 ![ATLAS CI](https://github.com/victoriajarocki/Project-ATLAS/actions/workflows/ci.yml/badge.svg)
@@ -23,31 +23,31 @@
 
 Project ATLAS is a long-term software engineering project focused on building a modular, extensible, privacy-first AI operating system.
 
-Rather than developing a traditional chatbot, ATLAS is being engineered as a complete AI platform capable of natural conversation, long-term memory, secure tool execution, local reasoning, engineering assistance, computer interaction, and eventually autonomous task execution.
+Rather than functioning as a traditional chatbot, ATLAS is engineered as a complete AI platform capable of natural conversation, persistent memory, secure tool execution, local reasoning, engineering assistance, computer interaction, and eventually autonomous task execution.
 
-Every subsystem is designed around clean interfaces, testability, documentation, and long-term maintainability so that new capabilities can be added without requiring architectural redesign.
+Version 1.0.0 introduces the first agent foundation. ATLAS can now interpret ordinary natural-language requests, decide whether a registered tool is needed, validate structured tool requests, apply permission policies, execute approved tools, and return trusted results.
 
-Project ATLAS is intended to evolve over many years into a complete AI operating system.
+Every subsystem is designed around stable interfaces, strong typing, automated testing, documentation, and long-term maintainability.
 
 ---
 
 # Vision
 
-The long-term objective of ATLAS is to create an AI system capable of functioning as a:
+The long-term objective of Project ATLAS is to create an AI system capable of functioning as a:
 
 - Personal engineering assistant
 - Programming assistant
 - Research assistant
-- Knowledge management platform
+- Knowledge-management platform
 - Automation system
 - Computer interface
 - Voice assistant
 - Vision-enabled assistant
-- Robotics control platform
+- Robotics-control platform
 
 The project emphasizes modular software engineering rather than rapid feature development.
 
-Each subsystem is designed to remain independently maintainable while integrating seamlessly with the larger architecture.
+Each subsystem is designed to remain independently maintainable while integrating with the larger ATLAS architecture.
 
 ---
 
@@ -57,18 +57,26 @@ Each subsystem is designed to remain independently maintainable while integratin
 
 Every major capability exists as an independent subsystem.
 
-Examples include:
+Current subsystems include:
 
+- Agent
 - AI Providers
-- Memory
+- Configuration
 - Conversations
-- Observability
-- Tools
-- Permissions
 - Filesystem
+- Memory
+- Observability
+- Permissions
+- Tools
+
+Planned subsystems include:
+
 - Planning
+- Web Research
 - Voice
 - Vision
+- Desktop Control
+- Robotics
 
 Each subsystem can evolve independently while maintaining stable public interfaces.
 
@@ -80,14 +88,16 @@ Whenever practical, computation happens locally.
 
 Current local capabilities include:
 
-- Local Ollama models
+- Local AI inference through Ollama
 - Local SQLite databases
 - Local conversation storage
 - Local memory storage
-- Local log files
+- Local rotating log files
 - Local filesystem tools
+- Local agent decisions
+- Local permission enforcement
 
-Cloud services remain optional rather than mandatory.
+Cloud model providers remain optional rather than mandatory.
 
 ---
 
@@ -95,70 +105,134 @@ Cloud services remain optional rather than mandatory.
 
 User information belongs to the user.
 
-Current privacy features include:
+Current privacy and security features include:
 
-- SQLite storage
-- Local logging
+- Local SQLite storage
+- Local application logging
 - Environment-based secrets
 - Scoped filesystem access
-- Path traversal protection
+- Configurable allowed directories
+- Path-traversal protection
 - Risk-based permission controls
-- Confirmation-controlled tool execution
+- Confirmation-controlled state changes
+- High-risk tool denial
+- Tool-argument validation
+- Logs that exclude complete message and file contents
 
-Future versions will continue expanding local-first capabilities.
+Future releases will continue expanding local-first operation and user-controlled authorization.
 
 ---
 
 ## Engineering First
 
-Project ATLAS is engineered using modern software engineering practices including:
+Project ATLAS uses modern software-engineering practices including:
 
 - Modular package architecture
+- Abstract interfaces
 - Strong typing
 - Static analysis
-- Unit testing
+- Unit and integration testing
 - Continuous integration
 - Versioned releases
 - Architecture documentation
 - Changelog management
 - Automated formatting
 - Automated linting
+- Security-oriented validation
 
-The objective is to build production-quality software rather than experimental prototypes.
+The objective is to build production-quality software rather than an experimental prototype.
 
 ---
 
 # Current Features
+
+## Agent Foundation
+
+Version 1.0.0 introduces the first ATLAS agent subsystem.
+
+Current agent capabilities include:
+
+- Natural-language request interpretation
+- Structured agent decisions
+- Automatic tool selection
+- Dynamic tool-catalog generation
+- JSON-schema-constrained Ollama decisions
+- Strict structured-response parsing
+- Tool-name validation
+- Tool-argument validation
+- Permission-policy integration
+- Confirmation-controlled state changes
+- Direct trusted tool-result responses
+- Deterministic routing for recognized file and directory creation requests
+- Conversation-context integration
+- Persistent storage of agent responses
+- Backward-compatible explicit tool commands
+
+ATLAS can now interpret requests such as:
+
+```text
+What is 347 multiplied by 982?
+```
+
+and automatically select the calculator.
+
+It can also interpret:
+
+```text
+What files are in my workspace?
+```
+
+and automatically select the directory-listing tool.
+
+State-changing requests remain protected:
+
+```text
+Create a file called hello.txt that says Hello World.
+```
+
+ATLAS routes the request to `write_text_file`, evaluates its risk, and requires explicit confirmation before execution.
+
+---
 
 ## AI Providers
 
 - Mock provider
 - OpenAI provider
 - Ollama provider
-- Provider factory architecture
-- Environment-based configuration
+- Provider-factory architecture
+- Environment-based provider selection
+- Normal response generation
+- Structured response generation
+- Ollama JSON-schema output
+- Ollama thinking suppression
+- Local-model keep-alive support
+- Defensive reasoning-output cleanup
 
 ---
 
 ## Persistent Memory
 
 - SQLite-backed memory
-- Remember command
-- Forget command
+- Explicit `remember` command
+- Explicit `forget` command
 - Memory IDs
+- Memory categories
+- Source tracking
 - Automatic context injection
-- Source-tracked storage
+- Local persistence
 
 ---
 
 ## Conversation Engine
 
 - Multiple persistent conversations
+- Persistent user and assistant messages
 - Conversation history
 - Automatic restoration
 - Conversation switching
 - Conversation renaming
 - Context reconstruction
+- Agent-context integration
 
 ---
 
@@ -166,21 +240,31 @@ The objective is to build production-quality software rather than experimental p
 
 - Structured logging
 - Request IDs
-- Performance timing
+- Request timing
+- Tool-execution timing
 - Startup diagnostics
-- Audit logging
+- Permission audit logging
+- Confirmation audit logging
 - Rotating log files
+- Controlled error logging
 
 ---
 
 ## Tool Framework
 
-- Modular tool registry
+- Modular tool interface
+- Tool definitions
+- JSON parameter schemas
+- Central tool registry
 - Shared execution pipeline
-- JSON argument validation
-- Risk classification
-- Built-in tools
-- Extensible plugin architecture
+- Shared argument validation
+- Tool-risk classification
+- Confirmation metadata
+- Structured tool results
+- Execution timing
+- Defense-in-depth validation
+- Explicit command execution
+- Model-selected execution
 
 Current built-in tools include:
 
@@ -197,59 +281,89 @@ Current built-in tools include:
 
 ## Permission System
 
-ATLAS includes a dedicated permission subsystem that evaluates every tool request before execution.
+ATLAS includes a dedicated permission subsystem that evaluates tool requests before execution.
 
 Current permission capabilities include:
 
 - Low-risk automatic execution
-- Medium-risk confirmation workflow
+- Medium-risk confirmation
 - High-risk denial
-- Pending request management
-- Audit logging
-- Confirmation approval
-- Confirmation denial
+- Pending-request management
+- Approval handling
+- Denial handling
+- Permission audit logging
+- Confirmation audit logging
+- Shared behavior for explicit and agent-selected tools
+
+ATLAS does not execute confirmation-controlled tools until the user enters:
+
+```text
+confirm yes
+```
+
+The user may deny the request with:
+
+```text
+confirm no
+```
 
 ---
 
 ## Secure Filesystem
 
-Version 0.9 introduces the first secure filesystem subsystem.
+ATLAS includes a scoped filesystem subsystem designed to prevent unrestricted computer access.
 
 Current capabilities include:
 
 - Workspace sandboxing
 - Configurable allowed directories
 - Secure path resolution
+- Relative-path support
+- Directory listing
+- File metadata inspection
 - UTF-8 text reading
 - UTF-8 text writing
 - Directory creation
-- Directory listing
-- File metadata inspection
 - Maximum read limits
 - Maximum write limits
-- Path traversal protection
+- Parent-traversal rejection
+- Outside-scope path rejection
+- Existing-file protection
+- Confirmation-controlled writes
+- Confirmation-controlled directory creation
 
-All filesystem operations remain confined to explicitly configured workspace directories.
+All filesystem operations remain confined to explicitly configured directories.
+
+ATLAS does not currently support:
+
+- File deletion
+- Arbitrary shell access
+- Unrestricted filesystem access
+- Binary-file modification
+- Recursive mass operations
 
 ---
 
 # Current Project Status
 
 | Component | Status |
-|-----------|--------|
+|---|---|
 | Foundation | ✅ Complete |
 | AI Providers | ✅ Complete |
+| Local AI | ✅ Complete |
 | Persistent Memory | ✅ Complete |
 | Conversation Engine | ✅ Complete |
 | Observability | ✅ Complete |
 | Tool Framework | ✅ Complete |
 | Permission System | ✅ Complete |
 | Secure Filesystem | ✅ Complete |
-| Agent Framework | 🚧 Next Milestone |
-| Web Research | ⏳ Planned |
+| Agent Foundation | ✅ Complete |
+| Multi-Step Agent Loop | ⏳ Planned |
 | Semantic Memory | ⏳ Planned |
+| Web Research | ⏳ Planned |
 | Voice | ⏳ Planned |
 | Vision | ⏳ Planned |
+| Desktop Control | ⏳ Planned |
 | Robotics | ⏳ Long-Term |
 
 ---
@@ -258,14 +372,14 @@ All filesystem operations remain confined to explicitly configured workspace dir
 
 Current release:
 
-- **Version:** v0.9.0
+- **Version:** v1.0.0
 - **Python:** 3.13+
-- **Architecture:** Modular
-- **Unit Tests:** 131 Passing
+- **Architecture:** Modular and local-first
+- **Automated Tests:** 204 passing
 - **Static Type Checking:** MyPy
 - **Formatting:** Ruff
 - **Linting:** Ruff
-- **CI:** GitHub Actions
+- **Continuous Integration:** GitHub Actions
 - **License:** MIT
 
 ---
@@ -280,6 +394,7 @@ Project-ATLAS/
 │       └── ci.yml
 │
 ├── docs/
+│   ├── agent.md
 │   ├── configuration.md
 │   ├── development.md
 │   ├── filesystem.md
@@ -291,6 +406,14 @@ Project-ATLAS/
 │
 ├── src/
 │   └── atlas/
+│       ├── agent/
+│       │   ├── __init__.py
+│       │   ├── exceptions.py
+│       │   ├── models.py
+│       │   ├── parser.py
+│       │   ├── prompt.py
+│       │   └── service.py
+│       │
 │       ├── config/
 │       ├── conversations/
 │       ├── core/
@@ -302,6 +425,15 @@ Project-ATLAS/
 │       └── tools/
 │
 ├── tests/
+│   ├── test_agent_models.py
+│   ├── test_agent_parser.py
+│   ├── test_agent_prompt.py
+│   ├── test_agent_service.py
+│   ├── test_app_agent.py
+│   └── ...
+│
+├── workspace/
+│   └── .gitkeep
 │
 ├── .env.example
 ├── .gitignore
@@ -317,19 +449,19 @@ Project-ATLAS/
 
 # Installation
 
-Clone the repository.
+Clone the repository:
 
 ```bash
 git clone https://github.com/victoriajarocki/Project-ATLAS.git
 ```
 
-Enter the project directory.
+Enter the project directory:
 
 ```bash
 cd Project-ATLAS
 ```
 
-Create a virtual environment.
+Create a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -343,19 +475,19 @@ Activate the virtual environment.
 .venv\Scripts\Activate.ps1
 ```
 
-Install ATLAS in editable development mode.
+Install ATLAS in editable development mode:
 
 ```bash
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
 ---
 
 # Configuration
 
-ATLAS is configured entirely through environment variables.
+ATLAS is configured through environment variables.
 
-Create a local configuration file.
+Create a local configuration file:
 
 ```text
 .env
@@ -364,8 +496,8 @@ Create a local configuration file.
 Example configuration:
 
 ```dotenv
-ATLAS_PROVIDER=mock
-ATLAS_MODEL=mock-model
+ATLAS_PROVIDER=ollama
+ATLAS_MODEL=qwen3:4b
 
 OPENAI_API_KEY=
 
@@ -383,13 +515,15 @@ ATLAS_FILESYSTEM_MAX_READ_BYTES=1000000
 ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS=1000000
 ```
 
-Filesystem access is intentionally restricted to configured workspace directories.
+Filesystem access is restricted to configured directories.
+
+The real `.env` file must remain excluded from Git.
 
 ---
 
 # Running ATLAS
 
-Launch the application.
+Launch the application:
 
 ```bash
 atlas
@@ -399,38 +533,119 @@ Example startup:
 
 ```text
 ==================================================
-ATLAS v0.9.0
+ATLAS v1.0.0
 Personal AI Operating System
-
-Model provider: Mock
-
+Model provider: Ollama
 Persistent memory: Enabled
 Conversation sessions: Enabled
 Tool system: Enabled
 Permission system: Enabled
-
+Agent system: Enabled
+Active chat: 1
 ==================================================
 ```
 
 ---
 
-# Example Commands
+# Natural-Language Agent Examples
+
+## Direct Response
+
+```text
+You: What is the capital of Poland?
+
+ATLAS: The capital of Poland is Warsaw.
+```
+
+## Automatic Calculator Selection
+
+```text
+You: What is 347 multiplied by 982?
+
+ATLAS: 340754
+```
+
+## Automatic Workspace Listing
+
+```text
+You: What files are in my workspace?
+
+ATLAS:
+file: .gitkeep (size: 0 bytes)
+file: agent-test.txt (size: 27 bytes)
+```
+
+## Automatic File Reading
+
+```text
+You: Read agent-test.txt.
+
+ATLAS: Project ATLAS agent test.
+```
+
+## Confirmation-Controlled Directory Creation
+
+```text
+You: Create a folder called Rocket Design.
+
+ATLAS: Tool create_directory requires confirmation.
+Risk level: medium.
+Reason: This tool requires explicit user confirmation before execution.
+Use 'confirm yes' to approve or 'confirm no' to deny.
+
+You: confirm yes
+
+ATLAS: Created directory: Rocket Design
+```
+
+## Confirmation-Controlled File Creation
+
+```text
+You: Create a file called hello.txt that says Hello World.
+
+ATLAS: Tool write_text_file requires confirmation.
+Risk level: medium.
+Reason: This tool requires explicit user confirmation before execution.
+Use 'confirm yes' to approve or 'confirm no' to deny.
+
+You: confirm yes
+
+ATLAS: Created file: hello.txt (11 characters)
+```
+
+## Current Local Time
+
+```text
+You: What time is it?
+
+ATLAS:
+Current local time
+
+Saturday, August 01, 2026
+8:10:48 PM EDT
+```
+
+---
+
+# Explicit Commands
+
+Natural-language agent behavior is now the primary interaction mode, but explicit commands remain available for control, testing, and debugging.
 
 ## Persistent Memory
 
-Remember information.
+Remember information:
 
 ```text
 remember My L2 rocket is named Wraith.
 ```
 
-View stored memories.
+View stored memories:
 
 ```text
 memories
 ```
 
-Delete a memory.
+Delete a memory:
 
 ```text
 forget 3
@@ -440,31 +655,31 @@ forget 3
 
 ## Conversation Management
 
-Create a new conversation.
+Create a new conversation:
 
 ```text
 new chat Rocket Design
 ```
 
-View conversations.
+View conversations:
 
 ```text
 chats
 ```
 
-Switch conversations.
+Switch conversations:
 
 ```text
 use chat 2
 ```
 
-Rename the active conversation.
+Rename the active conversation:
 
 ```text
 rename chat Research Notes
 ```
 
-Display recent history.
+Display recent history:
 
 ```text
 history
@@ -472,149 +687,222 @@ history
 
 ---
 
-## Built-in Tools
+## Explicit Tool Commands
 
-List available tools.
+List registered tools:
 
 ```text
 tools
 ```
 
-Calculator
+Run the calculator:
 
 ```text
 tool calculator {"expression":"15*(6+3)"}
 ```
 
-Current time
+Read the current local time:
 
 ```text
 tool current_time {}
 ```
 
----
-
-## Filesystem Tools
-
-List files.
+List workspace contents:
 
 ```text
 tool list_directory {"path":"."}
 ```
 
-Read a text file.
+Read a text file:
 
 ```text
 tool read_text_file {"path":"Rocket Design/notes.txt"}
 ```
 
-Inspect file metadata.
+Inspect file metadata:
 
 ```text
 tool file_info {"path":"Rocket Design/notes.txt"}
 ```
 
-Create a directory.
+Create a directory:
 
 ```text
 tool create_directory {"path":"Rocket Design"}
 ```
 
-Write a file.
+Write a text file:
 
 ```text
-tool write_text_file {
-    "path":"Rocket Design/notes.txt",
-    "content":"Project ATLAS"
-}
+tool write_text_file {"path":"Rocket Design/notes.txt","content":"Project ATLAS"}
 ```
 
 ---
 
-## Confirmation Workflow
+# Confirmation Workflow
 
-Medium-risk tools require explicit user approval.
+Medium-risk tools require explicit approval.
 
-Approve execution.
+Approve a pending request:
 
 ```text
 confirm yes
 ```
 
-Reject execution.
+Reject a pending request:
 
 ```text
 confirm no
 ```
 
-ATLAS never executes confirmation-controlled tools until approval is received.
+ATLAS blocks unrelated requests while a confirmation-controlled action is pending.
+
+High-risk tools are denied by the default permission policy.
+
+---
+
+# Agent Execution Flow
+
+A normal v1.0.0 agent request follows this pipeline:
+
+```text
+User Message
+    ↓
+AtlasApp
+    ↓
+Command Detection
+    ↓
+Deterministic Safety Routing
+    ↓
+Agent Prompt Builder
+    ↓
+Model Structured Decision
+    ↓
+Agent Decision Parser
+    ↓
+Tool and Argument Validation
+    ↓
+Permission Evaluation
+    ↓
+Tool Execution or Confirmation
+    ↓
+Trusted Tool Result
+    ↓
+Conversation Storage
+    ↓
+User Response
+```
+
+For tool-assisted requests, ATLAS returns the trusted tool result directly. This avoids a second model call, reduces latency, and prevents reasoning or prompt text from leaking into user-facing output.
+
+---
+
+# Agent Safety Model
+
+Version 1.0.0 intentionally limits agent autonomy.
+
+Current safeguards include:
+
+- Exactly one model-selected tool per request
+- Strict structured decision parsing
+- Registered tools only
+- Tool-schema validation
+- Permission evaluation before execution
+- Confirmation for state-changing tools
+- High-risk tool denial
+- Scoped filesystem access
+- Deterministic routing for recognized file and directory creation
+- No arbitrary shell execution
+- No unrestricted file access
+- No autonomous background execution
+- No unbounded reasoning loop
+- No self-modifying prompts
+
+Multi-step autonomous planning is intentionally deferred to a later release.
 
 ---
 
 # Development Workflow
 
-Run formatting.
+Run formatting:
 
 ```bash
 ruff format .
 ```
 
-Run linting.
+Verify formatting:
+
+```bash
+ruff format --check .
+```
+
+Run linting:
 
 ```bash
 ruff check .
 ```
 
-Run static type checking.
+Run static type checking:
 
 ```bash
 mypy src
 ```
 
-Run all tests.
+Run all tests:
 
 ```bash
 pytest
 ```
 
-Current automated test suite:
+Check for whitespace errors:
 
-- 131 passing tests
-- Filesystem subsystem tests
+```bash
+git diff --check
+```
+
+The current automated suite contains **204 passing tests**, including:
+
+- Agent decision-model tests
+- Agent parser tests
+- Agent prompt tests
+- Agent service tests
+- Application-level agent integration tests
+- Filesystem tests
 - Permission workflow tests
 - Conversation tests
 - Memory tests
 - Tool framework tests
 - Logging tests
-- Model provider tests
+- Model-provider tests
+- Structured-output tests
+- Deterministic action-routing tests
 
 ---
 
 # Continuous Integration
 
-Every pull request automatically performs:
+Every push and pull request runs:
 
+- Ruff lint checks
 - Ruff formatting verification
-- Ruff linting
-- MyPy type checking
-- Complete unit test suite
+- MyPy static type checking
+- Complete pytest suite
 
-This ensures every merge into the main branch maintains project quality standards.
+This ensures changes meet the project's quality requirements before merging.
 
 ---
 
 # Documentation
 
-Additional documentation is available throughout the repository.
-
 | Document | Description |
-|----------|-------------|
+|---|---|
 | `ARCHITECTURE.md` | Complete system architecture |
-| `CHANGELOG.md` | Version history |
-| `ROADMAP.md` | Development roadmap |
+| `CHANGELOG.md` | Version and release history |
+| `ROADMAP.md` | Planned development milestones |
+| `docs/agent.md` | Agent subsystem and execution model |
 | `docs/installation.md` | Installation guide |
 | `docs/configuration.md` | Environment configuration |
-| `docs/development.md` | Development workflow |
+| `docs/development.md` | Development and contribution workflow |
 | `docs/tools.md` | Tool framework |
 | `docs/permissions.md` | Permission subsystem |
 | `docs/filesystem.md` | Secure filesystem subsystem |
@@ -623,133 +911,98 @@ Additional documentation is available throughout the repository.
 
 # Current Release
 
-## Project ATLAS v0.9.0
+## Project ATLAS v1.0.0 — Agent Foundation
 
-ATLAS v0.9.0 introduces the first secure filesystem subsystem.
+Version 1.0.0 transitions ATLAS from a command-driven assistant into a constrained, tool-using AI agent.
 
 Major additions include:
 
-- Scoped filesystem architecture
-- Secure path resolver
-- FileSystemService
-- Read text files
-- Write text files
-- Create directories
-- Directory listing
-- File metadata inspection
-- JSON schema validation
-- Shared argument validation
-- Workspace sandboxing
-- Path traversal protection
-- Permission-controlled filesystem writes
-- Expanded automated test coverage
+- Dedicated agent package
+- Agent decision models
+- Structured decision parser
+- Dynamic tool catalog
+- Agent prompt builder
+- Agent orchestration service
+- Natural-language tool selection
+- JSON-schema-constrained Ollama decisions
+- Tool-result safety improvements
+- Permission-system integration
+- Model-selected confirmation workflow
+- Deterministic file-creation routing
+- Deterministic directory-creation routing
+- User-friendly local-time output
+- Agent integration with conversation history
+- 204 passing automated tests
+
+Version 1.0.0 remains intentionally limited to one model-selected tool per request.
 
 ---
 
-# Long-Term Roadmap
+# Development Roadmap
 
-Project ATLAS is being developed as a long-term engineering project through incremental, versioned milestones.
-
-## Completed
+## Completed Releases
 
 - ✅ v0.1.0 — Foundation
 - ✅ v0.2.0 — Model Provider Architecture
-- ✅ v0.3.0 — Local AI (Ollama)
+- ✅ v0.3.0 — Local AI with Ollama
 - ✅ v0.4.0 — Persistent Memory
 - ✅ v0.5.0 — Conversation Sessions
 - ✅ v0.6.0 — Structured Logging
 - ✅ v0.7.0 — Tool Framework
 - ✅ v0.8.0 — Permission System
 - ✅ v0.9.0 — Secure Filesystem
+- ✅ v1.0.0 — Agent Foundation
 
 ---
 
-## Next Milestone
+## Planned Development
 
-### v1.0.0 — Agent Framework
+Future releases may include:
 
-The next major milestone transitions ATLAS from executing individual commands to reasoning about complex tasks.
+### Agent Capabilities
 
-Planned capabilities include:
+- Multi-step tool execution
+- Agent-step limits
+- Replanning after tool results
+- Failed-tool recovery
+- Task-completion summaries
+- Explicit task cancellation
+- Persistent plans
 
-- Multi-step task planning
-- Automatic tool selection
-- Sequential tool execution
-- Internal reasoning pipeline
-- Action planning
-- Agent execution loop
-- Task completion summaries
+### Memory
 
-Example:
-
-```text
-You:
-Create a folder called Rockets,
-create notes.txt,
-and write "Project Wraith"
-inside it.
-```
-
-ATLAS will internally plan:
-
-```text
-Thought
-↓
-
-Create directory
-
-↓
-
-Create file
-
-↓
-
-Write contents
-
-↓
-
-Return completion summary
-```
-
-This represents the transition from a command-driven assistant to an intelligent AI agent.
-
----
-
-## Future Development
-
-Planned future milestones include:
-
-### AI
-
-- Semantic memory
-- Long-term memory ranking
-- Memory retrieval optimization
-- Multiple reasoning modes
+- Semantic retrieval
+- Embedding-based search
+- Memory relevance ranking
+- Memory consolidation
+- Automatic memory suggestions
+- Source-aware retrieval
 
 ### Tools
 
-- Web search
+- Web research
 - Weather
 - Email
 - Calendar
-- PDF reader
+- PDF reading
 - Code execution
 - Git integration
+- Application launching
 
 ### Computer Interaction
 
 - Desktop automation
 - Keyboard control
 - Mouse control
-- Application launching
+- Window management
 - Screen understanding
 
 ### Voice
 
 - Speech recognition
 - Streaming conversation
-- Wake word
-- Natural voice synthesis
+- Wake-word detection
+- Local speech synthesis
 
 ### Vision
 
@@ -773,21 +1026,26 @@ Planned future milestones include:
 - Autonomous planning
 - Real-world interaction
 
+See `ROADMAP.md` for the complete development plan.
+
 ---
 
 # Contributing
 
 Project ATLAS is currently developed as a long-term personal engineering project.
 
-Although outside contributions are not currently being accepted, the repository follows modern software engineering practices including:
+Although outside contributions are not currently being accepted, the repository follows professional software-development practices including:
 
 - Feature branches
 - Pull requests
+- Linked issues
+- Milestones
 - Versioned releases
 - Automated testing
 - Continuous integration
 - Static analysis
-- Comprehensive documentation
+- Architecture documentation
+- Release notes
 
 Future community contributions may be supported as the architecture matures.
 
@@ -796,7 +1054,7 @@ Future community contributions may be supported as the architecture matures.
 # Version History
 
 | Version | Major Feature |
-|----------|---------------|
+|---|---|
 | v0.1.0 | Project Foundation |
 | v0.2.0 | Model Provider Architecture |
 | v0.3.0 | Ollama Integration |
@@ -806,8 +1064,9 @@ Future community contributions may be supported as the architecture matures.
 | v0.7.0 | Tool Framework |
 | v0.8.0 | Permission System |
 | v0.9.0 | Secure Filesystem |
+| v1.0.0 | Agent Foundation |
 
-A complete history of every release is available in:
+A complete history is available in:
 
 - `CHANGELOG.md`
 - GitHub Releases
@@ -820,18 +1079,20 @@ Project ATLAS is built around one guiding principle:
 
 > Build the architecture first. Build capabilities second.
 
-Every subsystem is designed with long-term maintainability, modularity, and extensibility as primary goals.
+Every subsystem is designed with maintainability, modularity, security, and extensibility as primary goals.
 
-Rather than optimizing for rapid feature development, ATLAS prioritizes:
+Rather than optimizing only for rapid feature development, ATLAS prioritizes:
 
 - Clean architecture
 - Stable interfaces
+- Explicit permissions
 - Thorough testing
 - Comprehensive documentation
 - Versioned development
 - Incremental improvement
+- Safe failure behavior
 
-The objective is not simply to create another AI assistant, but to engineer a software platform capable of supporting years of future development.
+The objective is not simply to create another chatbot, but to engineer a software platform capable of supporting years of future development.
 
 ---
 
@@ -839,23 +1100,28 @@ The objective is not simply to create another AI assistant, but to engineer a so
 
 Current release:
 
-**Project ATLAS v0.9.0**
+**Project ATLAS v1.0.0 — Agent Foundation**
 
 Current implementation includes:
 
 - ✅ Modular architecture
 - ✅ Multiple AI providers
+- ✅ Local Ollama inference
 - ✅ Persistent memory
 - ✅ Conversation management
 - ✅ Structured logging
 - ✅ Tool framework
 - ✅ Permission system
 - ✅ Secure filesystem
+- ✅ Natural-language tool selection
+- ✅ Structured agent decisions
+- ✅ Confirmation-controlled agent actions
+- ✅ Deterministic state-change routing
 - ✅ Continuous integration
 - ✅ Comprehensive documentation
-- ✅ 131 automated tests
+- ✅ 204 automated tests
 
-Development is actively continuing toward the v1.0.0 Agent Framework milestone.
+Development is actively continuing beyond the v1.0.0 agent foundation.
 
 ---
 
@@ -873,9 +1139,9 @@ See the `LICENSE` file for complete licensing information.
 
 *A modular AI operating system engineered for long-term growth.*
 
-**Current Version:** **v0.9.0**
+**Current Version:** **v1.0.0**
 
-**Next Milestone:** **v1.0.0 — Agent Framework**
+**Current Milestone:** **Agent Foundation Complete**
 
 ---
 

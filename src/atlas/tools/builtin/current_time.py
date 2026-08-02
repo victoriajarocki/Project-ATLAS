@@ -40,8 +40,16 @@ class CurrentTimeTool(Tool):
 
         current_time = datetime.now().astimezone()
 
+        date_string = current_time.strftime("%A, %B %d, %Y")
+
+        time_string = current_time.strftime("%I:%M:%S %p").lstrip("0")
+
+        timezone = current_time.strftime("%Z")
+
+        formatted_time = f"Current local time\n\n{date_string}\n{time_string} {timezone}"
+
         return ToolResult(
             tool_name=self.definition.name,
             success=True,
-            output=current_time.isoformat(timespec="seconds"),
+            output=formatted_time,
         )

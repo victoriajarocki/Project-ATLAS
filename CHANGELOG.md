@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Project ATLAS will be documented in this file.
+All notable changes to Project ATLAS are documented in this file.
 
 The project follows semantic versioning:
 
@@ -14,21 +14,137 @@ The project follows semantic versioning:
 
 ### Planned
 
-- Agent framework
-- Automatic tool selection
-- Multi-step task execution
-- Model-directed reasoning
+- Multi-step agent execution
+- Replanning after tool results
+- Agent step limits
 - Automatic conversation titles
 - Semantic memory retrieval
 - Web research tools
+- Improved deterministic action routing
+- Better user-facing tool-result formatting
+
+---
+
+## [1.0.0] - 2026-08-01
 
 ### Added
 
-- GitHub Actions continuous-integration workflow
-- Automated Ruff lint checks on pushes and pull requests
-- Automated Ruff formatting verification
-- Automated mypy static type checks
-- Automated pytest test execution
+- Dedicated agent subsystem
+- Agent decision models
+- Agent decision types
+- Structured tool-request models
+- Agent pending-request models
+- Agent run-result models
+- Agent-specific exceptions
+- Structured agent-response parser
+- Strict JSON-object validation
+- Unknown-field rejection
+- Dynamic agent prompt builder
+- Dynamic registered-tool catalog
+- Tool parameter schemas in agent prompts
+- Tool risk metadata in agent prompts
+- Structured-output contract for model decisions
+- Agent orchestration service
+- Natural-language tool selection
+- Direct-response decisions
+- Model-selected tool-use decisions
+- Agent integration with the permission system
+- Agent integration with the tool executor
+- Agent integration with conversation context
+- Agent integration with persistent memory context
+- Agent-selected confirmation workflow
+- Pending model-selected tool requests
+- Confirmation approval for agent-selected tools
+- Confirmation denial for agent-selected tools
+- Application-level agent integration
+- Agent-enabled startup status
+- Natural-language calculator selection
+- Natural-language current-time selection
+- Natural-language directory listing
+- Natural-language file reading
+- Natural-language directory creation
+- Natural-language file creation
+- Deterministic routing for recognized file-creation requests
+- Deterministic routing for recognized directory-creation requests
+- Structured-output model-provider interface
+- Ollama JSON-schema-constrained responses
+- Ollama thinking suppression
+- Ollama model keep-alive configuration
+- Ollama output-length limits
+- Defensive cleanup for leaked reasoning blocks
+- User-friendly local date-and-time formatting
+- Agent unit tests
+- Agent parser tests
+- Agent prompt tests
+- Agent service tests
+- Agent application integration tests
+- Deterministic routing tests
+- Agent confirmation tests
+- Agent history-persistence tests
+- Agent documentation
+
+### Changed
+
+- Normal user messages now pass through the agent subsystem when enabled
+- ATLAS can now decide whether to answer directly or use one registered tool
+- Registered tools are exposed dynamically to the model
+- Agent decisions now use a strict JSON structure
+- Ollama decisions now use native JSON-schema-constrained output
+- Tool requests selected by the model now pass through shared argument validation
+- Tool requests selected by the model now pass through permission evaluation
+- Medium-risk model-selected tools now pause for confirmation
+- High-risk model-selected tools remain denied
+- Approved model-selected tools now resume through the existing confirmation workflow
+- Explicit `tool ...` commands remain supported
+- Explicit and model-selected tools now share the same registry, validator, permission service, and executor
+- Tool-assisted agent requests now return trusted tool output directly
+- The second model call after tool execution was removed
+- Tool-assisted response latency was reduced
+- Reasoning-output leakage was prevented from reaching the user
+- Recognized file and folder creation requests bypass model discretion
+- Conversation history now stores final agent responses
+- The command-line startup display now reports agent availability
+- The current-time tool now returns a readable local date, time, and timezone
+- The project version is now 1.0.0
+- The automated test suite now contains 204 passing tests
+
+### Security
+
+- The agent may select only registered tools
+- Tool arguments must match registered parameter schemas
+- Invalid structured decisions are rejected
+- Invalid JSON model output is rejected
+- Unknown decision fields are rejected
+- Unknown tool-request fields are rejected
+- Hallucinated tool names are rejected
+- Invalid model-generated tool arguments are rejected
+- Medium-risk actions require explicit user confirmation
+- High-risk actions remain denied by default
+- Pending actions block unrelated requests
+- Recognized file and directory creation requests are routed deterministically
+- The model cannot silently execute filesystem state changes
+- Trusted tool output is returned directly after execution
+- A second model call cannot rewrite or misrepresent tool results
+- Leaked `<think>` blocks are removed from Ollama output
+- Filesystem actions remain restricted to configured allowed directories
+- Path traversal protections remain active
+- Existing-file protections remain active
+- Arbitrary shell execution remains unsupported
+- Unrestricted filesystem access remains unsupported
+- Agent execution is limited to one selected tool per request
+- No autonomous background loop is implemented
+- No self-modifying prompt behavior is implemented
+
+### Notes
+
+- Version 1.0.0 introduces a constrained single-tool agent foundation
+- Multi-step planning is intentionally deferred
+- Agent tool decisions depend on the quality of the active model
+- Deterministic routing currently covers recognized English file and directory creation requests
+- Tool-assisted responses currently return trusted tool output rather than model-rewritten summaries
+- Explicit tool commands remain available for debugging and direct control
+- Ollama is the recommended local provider for agent testing
+- The current recommended local model remains `qwen3:4b`
 
 ---
 
@@ -38,14 +154,14 @@ The project follows semantic versioning:
 
 - Secure filesystem subsystem
 - Scoped path resolver
-- FileSystemService
+- `FileSystemService`
 - Configurable workspace directories
 - Directory listing tool
 - File information tool
 - Read text file tool
 - Write text file tool
 - Create directory tool
-- Shared JSON schema validator
+- Shared JSON-schema validator
 - Filesystem configuration settings
 - Filesystem integration tests
 - Filesystem documentation
@@ -53,8 +169,8 @@ The project follows semantic versioning:
 ### Changed
 
 - Tool execution now validates arguments before permission evaluation
-- ToolExecutor now exposes reusable argument validation
-- Configuration system now supports filesystem settings
+- `ToolExecutor` now exposes reusable argument validation
+- Configuration now supports filesystem settings
 - Tool registry now includes filesystem tools
 - Updated the command-line interface with filesystem commands
 - Updated the project version to 0.9.0
@@ -66,7 +182,7 @@ The project follows semantic versioning:
 - Read and write limits are configurable
 - Medium-risk filesystem operations require confirmation
 - Read-only filesystem operations execute automatically
-- Filesystem activity is logged through structured audit logging
+- Filesystem activity is recorded through structured logging
 
 ### Notes
 
@@ -87,7 +203,7 @@ The project follows semantic versioning:
 - Confirmation-controlled tool execution
 - `confirm yes` command
 - `confirm no` command
-- Pending tool request state
+- Pending tool-request state
 - Confirmation demonstration tool
 - Permission audit logging
 - Confirmation workflow tests
@@ -153,9 +269,11 @@ The project follows semantic versioning:
 
 ### Notes
 
-- Tool execution currently requires explicit CLI commands.
-- Model-directed tool selection is planned for a later version.
-- File-system, terminal, and computer-control tools are intentionally deferred until permission and confirmation controls are implemented.
+- Tool execution currently requires explicit CLI commands
+- Model-directed tool selection is planned for a later version
+- Filesystem, terminal, and computer-control tools were intentionally deferred until permission and confirmation controls were implemented
+
+---
 
 ## [0.6.0] - 2026-07-31
 
@@ -191,10 +309,12 @@ The project follows semantic versioning:
 
 ### Notes
 
-- Default logs are stored in `logs/atlas.log`.
-- Default log level is `INFO`.
-- Log files rotate after approximately 5 MB.
-- Five rotated log backups are retained by default.
+- Default logs are stored in `logs/atlas.log`
+- Default log level is `INFO`
+- Log files rotate after approximately 5 MB
+- Five rotated log backups are retained by default
+
+---
 
 ## [0.5.0] - 2026-07-31
 
@@ -228,9 +348,11 @@ The project follows semantic versioning:
 
 ### Notes
 
-- ATLAS currently sends up to 20 recent messages as context.
-- Automatic summarization and token-aware context limits are planned for a later version.
-- Explicit persistent memories remain separate from conversation history.
+- ATLAS currently sends up to 20 recent messages as context
+- Automatic summarization and token-aware context limits are planned for a later version
+- Explicit persistent memories remain separate from conversation history
+
+---
 
 ## [0.4.0] - 2026-07-31
 
@@ -263,9 +385,11 @@ The project follows semantic versioning:
 
 ### Notes
 
-- Memory retrieval currently uses recent-memory context and basic text search.
-- Semantic vector retrieval is reserved for a later version.
-- Conversation sessions and automatic conversation context are reserved for v0.5.0.
+- Memory retrieval currently uses recent-memory context and basic text search
+- Semantic vector retrieval is reserved for a later version
+- Conversation sessions and automatic conversation context are reserved for v0.5.0
+
+---
 
 ## [0.3.0] - 2026-07-31
 
@@ -287,9 +411,9 @@ The project follows semantic versioning:
 
 ### Notes
 
-- Mock remains the default development provider.
-- OpenAI support remains available.
-- Ollama enables completely local inference.
+- Mock remains the default development provider
+- OpenAI support remains available
+- Ollama enables completely local inference
 - Current recommended development model:
   - `qwen3:4b`
 
@@ -316,8 +440,8 @@ The project follows semantic versioning:
 
 ### Notes
 
-- Mock is the default development provider.
-- OpenAI integration is available but requires separate API billing and quota.
+- Mock is the default development provider
+- OpenAI integration is available but requires separate API billing and quota
 
 ---
 
@@ -334,4 +458,4 @@ The project follows semantic versioning:
 - Linting and formatting with Ruff
 - Static type checking with mypy
 - Git version control
-- Project README
+- Initial project documentation
