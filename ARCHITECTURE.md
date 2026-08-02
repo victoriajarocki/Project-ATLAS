@@ -8,22 +8,25 @@ This document describes the high-level software architecture of Project ATLAS.
 
 Unlike implementation documentation, this document focuses on the organization of the system, the responsibilities of each subsystem, the relationships between those subsystems, and the engineering principles that guide long-term development.
 
-Project ATLAS is intentionally designed as an extensible AI operating system rather than a traditional chatbot. Every major capability is implemented as an independent subsystem with well-defined interfaces so future functionality can be added without redesigning the existing codebase.
+Project ATLAS is intentionally designed as a modular, local-first AI operating system rather than a traditional chatbot. Every major capability is implemented as an independent subsystem with stable interfaces so future functionality can be added without redesigning the existing codebase.
 
-This document should remain relatively stable across releases. Individual implementation details belong in subsystem documentation, while this document explains how the major pieces fit together.
+Version 1.0.0 introduces the first ATLAS agent architecture. The system can now interpret natural-language requests, determine whether a registered tool is required, execute authorized tools, and safely return trusted results while preserving strict security boundaries.
+
+This document should remain relatively stable across releases. Individual implementation details belong in subsystem documentation, while this document explains how the major architectural pieces fit together.
 
 ---
 
 # Design Philosophy
 
-Project ATLAS is built around six fundamental architectural principles.
+Project ATLAS is built around seven fundamental architectural principles.
 
 ## 1. Modularity
 
 Every subsystem should solve one problem well.
 
-Examples include:
+Current subsystems include:
 
+- Agent
 - AI Models
 - Memory
 - Conversations
@@ -31,9 +34,14 @@ Examples include:
 - Permissions
 - Filesystem
 - Tools
+
+Future subsystems include:
+
+- Planning
 - Voice
 - Vision
-- Planning
+- Desktop Automation
+- Robotics
 
 Subsystems communicate through stable interfaces rather than direct implementation dependencies whenever practical.
 
@@ -45,13 +53,15 @@ This allows components to evolve independently while minimizing breaking changes
 
 Whenever practical, user information and execution should remain on the local machine.
 
-Current examples include:
+Current local capabilities include:
 
 - SQLite memory database
 - SQLite conversation database
 - Ollama local inference
 - Local log files
 - Scoped local filesystem access
+- Local permission enforcement
+- Local agent orchestration
 
 Cloud providers remain optional rather than mandatory.
 
@@ -75,13 +85,33 @@ Future cloud integrations should require explicit user authorization.
 
 ---
 
-## 4. Extensibility
+## 4. Security by Design
+
+Safety is enforced through layered validation.
+
+Current security layers include:
+
+- Structured agent decisions
+- Tool-name validation
+- Tool-argument validation
+- Permission evaluation
+- Confirmation workflow
+- Scoped filesystem enforcement
+- Defense-in-depth validation
+- Structured logging
+
+No subsystem may bypass these boundaries.
+
+---
+
+## 5. Extensibility
 
 New capabilities should primarily be added through new modules rather than modifying existing implementations.
 
-The architecture should support:
+The architecture supports:
 
 - Additional AI providers
+- New agent capabilities
 - New tools
 - New memory systems
 - New filesystem capabilities
@@ -94,7 +124,7 @@ without requiring major redesigns.
 
 ---
 
-## 5. Reliability
+## 6. Reliability
 
 Every subsystem should be:
 
@@ -108,13 +138,13 @@ Failures should produce explicit, actionable errors rather than silent failures.
 
 ---
 
-## 6. Long-Term Stability
+## 7. Long-Term Stability
 
 Project ATLAS is intended to evolve over many years.
 
-Architectural decisions prioritize maintainability, safety, and extensibility over short-term convenience.
+Architectural decisions prioritize maintainability, safety, modularity, and extensibility over short-term convenience.
 
-Breaking changes should be rare and deliberate.
+Breaking changes should remain rare and deliberate.
 
 ---
 
@@ -123,73 +153,78 @@ Breaking changes should be rare and deliberate.
 Current system overview:
 
 ```text
-                    User
-                      │
-                      ▼
-              Command-Line Interface
-                      │
-                      ▼
-                  ATLAS Core
-                      │
-    ┌─────────────────┼─────────────────┐
-    │                 │                 │
- Models            Memory        Conversations
-    │                 │                 │
-    └─────────────────┴─────────────────┘
-                      │
-                      ▼
-               Tool Registry
-                      │
-                      ▼
-          Shared Argument Validation
-                      │
-                      ▼
-             Permission Service
-                      │
-                      ▼
-              Permission Policy
-                      │
-         ┌────────────┼────────────┐
-         │            │            │
-       Allow       Confirm       Deny
-         │            │            │
-         │       User decision     │
-         │            │            │
-         └────────────┴────────────┘
-                      │
-                      ▼
-                Tool Executor
-                      │
-                      ▼
-                Tool Modules
-                      │
-                      ▼
-          Filesystem Service Layer
-                      │
-                      ▼
-             Scoped Path Resolver
-                      │
-                      ▼
-         Configured Allowed Directory
+                         User
+                           │
+                           ▼
+                 Command-Line Interface
+                           │
+                           ▼
+                       AtlasApp
+                           │
+          ┌────────────────┴────────────────┐
+          │                                 │
+     Command Router                  Agent Service
+          │                                 │
+          │                    Structured Prompt Builder
+          │                                 │
+          │                           Model Provider
+          │                                 │
+          │                    Structured Decision Parser
+          │                                 │
+          └────────────────┬────────────────┘
+                           │
+                    Tool Registry
+                           │
+                           ▼
+               Shared Argument Validation
+                           │
+                           ▼
+                  Permission Service
+                           │
+                           ▼
+                  Permission Policy
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+        Allow           Confirm          Deny
+          │                │                │
+          │         User Confirmation       │
+          │                │                │
+          └────────────────┴────────────────┘
+                           │
+                           ▼
+                     Tool Executor
+                           │
+                           ▼
+                    Built-in Tools
+                           │
+                           ▼
+                 Filesystem Service
+                           │
+                           ▼
+                 Scoped Path Resolver
+                           │
+                           ▼
+              Configured Allowed Directory
 ```
 
 All major operations are observed through the structured logging subsystem.
 
-ATLAS Core is responsible for coordinating interactions between subsystems.
+AtlasApp coordinates interactions between every subsystem.
 
-Individual subsystems should not directly coordinate unrelated subsystems.
+Individual subsystems should never directly coordinate unrelated subsystems.
 
-Instead, communication should follow the pattern:
+Instead, communication follows the pattern:
 
 ```text
 Subsystem
     ↓
-ATLAS Core
+AtlasApp
     ↓
 Another Subsystem
 ```
 
-This minimizes coupling while making future refactoring significantly easier.
+This minimizes coupling while making future architectural changes significantly easier.
 
 ---
 
@@ -203,6 +238,7 @@ Project-ATLAS/
 │       └── ci.yml
 │
 ├── docs/
+│   ├── agent.md
 │   ├── configuration.md
 │   ├── development.md
 │   ├── filesystem.md
@@ -212,6 +248,7 @@ Project-ATLAS/
 │
 ├── src/
 │   └── atlas/
+│       ├── agent/
 │       ├── config/
 │       ├── conversations/
 │       ├── core/
@@ -223,7 +260,12 @@ Project-ATLAS/
 │       └── tools/
 │
 ├── tests/
+│   ├── test_agent_models.py
+│   ├── test_agent_parser.py
+│   ├── test_agent_prompt.py
+│   ├── test_agent_service.py
 │   ├── test_app.py
+│   ├── test_app_agent.py
 │   ├── test_conversations.py
 │   ├── test_filesystem.py
 │   ├── test_main.py
@@ -258,829 +300,771 @@ Each subsystem owns its own:
 - Tests
 - Documentation
 
-This keeps responsibilities localized and makes large-scale expansion significantly easier.
+This keeps responsibilities localized and makes future expansion significantly easier.
 
 ---
 
 # Subsystem Overview
 
-## Configuration
+Project ATLAS is composed of independent subsystems coordinated by `AtlasApp`.
 
-Location:
+Each subsystem owns a specific responsibility and communicates through well-defined interfaces.
 
-```text
-src/atlas/config
-```
+Current subsystems include:
 
-Responsibilities:
+- Configuration
+- Core
+- Agent
+- Models
+- Memory
+- Conversations
+- Observability
+- Permissions
+- Filesystem
+- Tools
 
-- Load application settings
-- Read environment variables
-- Validate configuration
-- Provide strongly typed settings
-- Centralize runtime configuration
-- Configure filesystem boundaries and size limits
+Future releases will introduce:
 
-Current filesystem settings include:
-
-```text
-ATLAS_ALLOWED_DIRECTORIES
-ATLAS_FILESYSTEM_MAX_READ_BYTES
-ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS
-```
-
-The configuration subsystem is intentionally isolated from application logic.
-
-Every subsystem receives configuration through dependency injection rather than reading environment variables directly.
-
-This improves testing, portability, and future deployment flexibility.
+- Planning
+- Web Research
+- Semantic Memory
+- Desktop Automation
+- Voice
+- Vision
+- Robotics
 
 ---
 
-## Core
+# Configuration Subsystem
 
-Location:
+Directory:
 
 ```text
-src/atlas/core
+atlas/config/
 ```
 
 Responsibilities:
 
-- Coordinate all subsystems
-- Receive user requests
-- Route commands
-- Manage application lifecycle
-- Build model context
-- Coordinate conversations
-- Coordinate memory
-- Coordinate permissions
-- Coordinate tools
-- Enforce validation before authorization
-
-ATLAS Core intentionally contains very little subsystem-specific business logic.
-
-Instead, it orchestrates specialized services.
-
-Current responsibilities include:
-
-- Processing normal AI conversations
-- Processing built-in commands
-- Processing tool requests
-- Parsing tool arguments
-- Triggering shared argument validation
-- Permission evaluation
-- Pending confirmation state
-- Tool execution
-- Conversation persistence
-- Memory persistence
-
-Future versions will expand the Core into a lightweight orchestration engine while keeping individual subsystem logic separate.
-
----
-
-## Models
-
-Location:
-
-```text
-src/atlas/models
-```
-
-Responsibilities:
-
-- Abstract AI providers
-- Model selection
+- Environment-variable loading
+- Settings validation
+- Default values
+- Filesystem configuration
+- Logging configuration
 - Provider configuration
-- Provider-specific adapters
-- Error normalization
+
+Primary classes:
+
+- `Settings`
+- `load_settings()`
+
+No business logic exists inside the configuration subsystem.
+
+It exists solely to provide validated configuration objects for the rest of the application.
+
+---
+
+# Core Subsystem
+
+Directory:
+
+```text
+atlas/core/
+```
+
+The Core subsystem contains the primary application coordinator.
+
+Main class:
+
+```text
+AtlasApp
+```
+
+AtlasApp owns the lifecycle of every request.
+
+Responsibilities include:
+
+- Processing CLI input
+- Detecting built-in commands
+- Building conversation context
+- Calling the Agent
+- Coordinating memory
+- Coordinating conversations
+- Coordinating permissions
+- Coordinating tools
+- Returning final responses
+- Logging request execution
+
+AtlasApp intentionally contains orchestration logic rather than business logic.
+
+Subsystem-specific behavior remains inside the owning subsystem.
+
+---
+
+# Agent Subsystem
+
+Directory:
+
+```text
+atlas/agent/
+```
+
+Version 1.0.0 introduces the first true ATLAS agent.
+
+The Agent subsystem transforms natural-language requests into structured execution decisions.
+
+Responsibilities include:
+
+- Building structured prompts
+- Presenting registered tools to the model
+- Receiving structured model decisions
+- Parsing JSON decisions
+- Validating decision structure
+- Validating requested tools
+- Coordinating tool execution
+- Coordinating permission checks
+- Returning trusted tool results
+- Managing pending confirmation requests
+
+The agent never executes tools directly.
+
+Instead it delegates execution through the existing Tool Framework.
+
+---
+
+## Agent Pipeline
+
+```text
+User Request
+      │
+      ▼
+Prompt Builder
+      │
+      ▼
+Model Provider
+      │
+      ▼
+Structured JSON
+      │
+      ▼
+Decision Parser
+      │
+      ▼
+Decision Models
+      │
+      ▼
+Tool Validation
+      │
+      ▼
+Permission System
+      │
+      ▼
+Tool Executor
+      │
+      ▼
+Trusted Result
+```
+
+Each stage performs exactly one responsibility.
+
+This layered design keeps the agent predictable and highly testable.
+
+---
+
+## Agent Components
+
+### Prompt Builder
+
+Responsible for constructing structured prompts.
+
+Responsibilities:
+
+- Build system instructions
+- Inject conversation context
+- Inject registered tools
+- Inject parameter schemas
+- Inject permission metadata
+- Request structured JSON output
+
+The prompt builder never interprets model responses.
+
+---
+
+### Decision Parser
+
+Responsible for interpreting model output.
+
+Responsibilities:
+
+- Parse JSON
+- Validate required fields
+- Reject malformed responses
+- Reject unknown structures
+- Produce typed decision models
+
+Invalid outputs never reach execution.
+
+---
+
+### Agent Service
+
+The Agent Service coordinates the complete decision pipeline.
+
+Responsibilities:
+
+- Send prompts to the model
+- Parse structured responses
+- Validate tool requests
+- Coordinate permissions
+- Execute approved tools
+- Return trusted tool output
+- Manage confirmation state
+
+It acts as the orchestration layer for the Agent subsystem.
+
+---
+
+### Decision Models
+
+The agent uses strongly typed models rather than dictionaries.
+
+Current models include:
+
+- Direct response
+- Tool request
+- Pending tool request
+- Tool execution result
+
+Typed models reduce runtime ambiguity while improving maintainability.
+
+---
+
+# Model Subsystem
+
+Directory:
+
+```text
+atlas/models/
+```
+
+Responsibilities:
+
+- AI provider abstraction
+- Local inference
+- Cloud inference
+- Structured-output support
+- Provider configuration
 
 Current providers:
 
-- Mock Provider
-- OpenAI Provider
-- Ollama Provider
+- Mock
+- OpenAI
+- Ollama
 
-Future providers may include:
-
-- Anthropic
-- Google Gemini
-- LM Studio
-- vLLM
-- Azure OpenAI
-- Local custom inference servers
-
-The Core communicates only through the abstract `ModelProvider` interface.
-
-This allows providers to be swapped without changing application logic.
+The provider interface allows AtlasApp and the Agent subsystem to remain provider-independent.
 
 ---
 
-## Memory
+## Provider Factory
 
-Location:
+Rather than constructing providers directly, ATLAS uses a provider factory.
+
+Benefits include:
+
+- Loose coupling
+- Simplified testing
+- Easy provider replacement
+- Centralized configuration
+
+Future providers can be added without modifying AtlasApp.
+
+---
+
+# Memory Subsystem
+
+Directory:
 
 ```text
-src/atlas/memory
+atlas/memory/
 ```
 
 Responsibilities:
 
-- Persistent memory storage
-- Memory validation
+- Persistent storage
 - Memory retrieval
+- Remember command
+- Forget command
 - Context generation
-- Memory deletion
-- Memory categorization
 
-Current implementation:
+Memory remains independent from conversations.
 
-- SQLite
-- Source tracking
-- Categories
-- Timestamps
-- Memory IDs
-
-Memory is intentionally separated from conversations.
-
-Memory represents long-term knowledge.
-
-Conversations represent dialogue history.
-
-Future versions will introduce semantic retrieval using embeddings.
+Explicit memories represent long-term information while conversations represent dialogue history.
 
 ---
 
-## Conversations
+# Conversation Subsystem
 
-Location:
+Directory:
 
 ```text
-src/atlas/conversations
+atlas/conversations/
 ```
 
 Responsibilities:
 
-- Persistent conversation storage
-- Chat creation
-- Chat switching
-- Conversation history
-- Context generation
-- Conversation metadata
-
-Current implementation:
-
-- SQLite
-- Conversation IDs
-- Titles
+- Conversation creation
 - Message history
+- Conversation switching
+- Active conversation tracking
+- Context reconstruction
 
-Future work includes:
+Conversation history is provided to the Agent as context but remains owned by the Conversation subsystem.
 
-- Automatic summaries
-- Search
-- Conversation archiving
-- Semantic retrieval
-- Token-aware history compression
+The Agent never communicates directly with the database.
+
+All persistence passes through the Conversation Service.
 
 ---
 
-## Observability
+# Observability Subsystem
 
-Location:
+Directory:
 
 ```text
-src/atlas/observability
+atlas/observability/
 ```
+
+The observability subsystem provides structured logging throughout ATLAS.
 
 Responsibilities:
 
-- Structured logging
-- Request timing
-- Request IDs
-- Rotating log files
-- Error reporting
+- Request logging
 - Startup logging
 - Shutdown logging
-- Tool and permission audit records
+- Performance timing
+- Error logging
+- Permission audit logging
+- Tool audit logging
+- Filesystem audit logging
 
-Logging is designed for both debugging and operational diagnostics.
+Every significant operation is recorded through structured log entries.
 
-Sensitive information should never appear in log files.
-
-Filesystem logs may include:
-
-- Resolved operation type
-- File or directory path
-- File size
-- Character count
-- Tool result
-- Execution duration
-
-Filesystem logs must not include complete file contents.
-
-Future observability work includes:
-
-- Performance metrics
-- Health checks
-- Telemetry dashboard
-- Distributed tracing
-- Runtime statistics
+Sensitive information such as conversation history, memory contents, API keys, and document contents are intentionally excluded from logs.
 
 ---
 
-## Permissions
+# Permission Subsystem
 
-Location:
+Directory:
 
 ```text
-src/atlas/permissions
+atlas/permissions/
 ```
+
+The permission subsystem determines whether a requested tool is allowed to execute.
 
 Responsibilities:
 
-- Evaluate tool authorization
-- Interpret tool risk levels
-- Require explicit user confirmation
-- Deny prohibited actions
-- Record permission decisions
-- Protect the boundary between tool requests and execution
+- Risk evaluation
+- Permission decisions
+- Confirmation handling
+- Pending requests
+- Audit logging
 
-Current components:
-
-- `PermissionDecision`
-- `PermissionEvaluation`
-- `PendingToolRequest`
-- `PermissionPolicy`
-- `PermissionService`
-
-Permission decisions:
+Current decision types:
 
 ```text
-allow
-confirm
-deny
+ALLOW
+CONFIRM
+DENY
 ```
 
-Default policy:
+Permission decisions are based entirely on registered tool metadata.
 
-| Tool condition | Decision |
-|---|---|
-| Low risk without confirmation | Allow |
-| Medium risk | Confirm |
-| Explicit confirmation required | Confirm |
-| High risk | Deny |
-
-The permission subsystem never executes tools.
-
-Instead, it determines whether execution is permitted.
-
-ATLAS Core currently owns temporary pending-confirmation state and resolves:
+Current risk levels:
 
 ```text
-confirm yes
-confirm no
+LOW
+MEDIUM
+HIGH
 ```
 
-Filesystem policy examples:
+Decision flow:
 
-| Tool | Risk | Behavior |
-|---|---|---|
-| `list_directory` | Low | Execute immediately |
-| `file_info` | Low | Execute immediately |
-| `read_text_file` | Low | Execute immediately |
-| `create_directory` | Medium | Require confirmation |
-| `write_text_file` | Medium | Require confirmation |
+```text
+Tool Request
+      │
+      ▼
+Permission Policy
+      │
+      ▼
+LOW ─────► Execute
 
-Future capabilities include:
+MEDIUM ──► Wait for Confirmation
 
-- Session permissions
-- Persistent approvals
-- User authentication
-- Role-based access
-- Trusted directories
-- Hardware safety controls
-- Remote authorization
+HIGH ────► Deny
+```
+
+The permission subsystem does not execute tools.
+
+It only determines whether execution is permitted.
 
 ---
 
-## Filesystem
+# Filesystem Subsystem
 
-Location:
+Directory:
 
 ```text
-src/atlas/filesystem
+atlas/filesystem/
 ```
+
+The filesystem subsystem provides secure access to local files.
 
 Responsibilities:
 
-- Restrict filesystem access to configured directories
-- Resolve user-supplied paths safely
-- Prevent path traversal
-- Read UTF-8 text files
-- Write UTF-8 text files
-- Create directories
-- List directory contents
-- Inspect file and directory metadata
-- Enforce read and write limits
-- Normalize filesystem errors
+- Path resolution
+- Allowed-directory enforcement
+- Directory listing
+- File metadata
+- Reading text files
+- Writing text files
+- Creating directories
 
-Current components:
+The filesystem subsystem never performs permission evaluation.
 
-- `ScopedPathResolver`
-- `FileSystemService`
-- `FileSystemEntry`
-- `FileSystemEntryType`
-- `FileReadResult`
-- `FileWriteResult`
-- Filesystem-specific exceptions
-
-The filesystem subsystem does not own permission decisions.
-
-Its responsibility is to ensure that an already-authorized operation remains confined to an approved filesystem scope.
-
-### Scoped Path Resolver
-
-`ScopedPathResolver` converts a user path into a resolved absolute path and verifies that it remains inside at least one configured root.
-
-Conceptual flow:
-
-```text
-User path
-   ↓
-Trim and normalize
-   ↓
-Resolve relative or absolute location
-   ↓
-Canonicalize path
-   ↓
-Compare against allowed roots
-   ↓
-Allow or reject
-```
-
-Relative paths resolve against the first configured allowed directory.
-
-Absolute paths are accepted only when they remain inside an allowed root.
-
-Path traversal such as:
-
-```text
-../outside.txt
-```
-
-is rejected after canonical resolution.
-
-### FileSystemService
-
-`FileSystemService` provides the filesystem operations used by built-in tools.
-
-Current operations:
-
-- `list_directory`
-- `get_info`
-- `read_text_file`
-- `create_directory`
-- `write_text_file`
-
-The service enforces:
-
-- Existing-path checks
-- File-versus-directory checks
-- UTF-8 decoding
-- Maximum read size
-- Maximum write size
-- Explicit overwrite behavior
-- Scoped path resolution
-
-### Filesystem Models
-
-`FileSystemEntry` describes visible files and directories.
-
-It includes:
-
-- Entry name
-- Resolved path
-- Entry type
-- File size when applicable
-- Last-modified timestamp
-
-`FileReadResult` includes:
-
-- Resolved path
-- File content
-- Character count
-
-`FileWriteResult` includes:
-
-- Resolved path
-- Character count
-- Whether the file was newly created
-
-### Workspace Sandbox
-
-The default workspace is:
-
-```text
-workspace/
-```
-
-The directory is retained in Git through:
-
-```text
-workspace/.gitkeep
-```
-
-Workspace contents are excluded through `.gitignore`.
-
-The default configuration is:
-
-```dotenv
-ATLAS_ALLOWED_DIRECTORIES=workspace
-```
-
-Multiple directories may be configured using semicolon-separated values.
+Permission decisions are made before filesystem operations begin.
 
 ---
 
-## Tool Framework
+## Scoped Path Resolver
 
-Location:
-
-```text
-src/atlas/tools
-```
+Every filesystem operation passes through the scoped path resolver.
 
 Responsibilities:
 
-- Define the common `Tool` interface
-- Register available tools
-- Describe tool metadata
-- Validate arguments
-- Execute authorized tools
-- Return structured results
+- Normalize paths
+- Resolve relative paths
+- Reject path traversal
+- Verify allowed directories
 
-Current components:
+This guarantees that tools cannot escape configured workspace boundaries.
 
-- `Tool`
-- `ToolDefinition`
-- `ToolRegistry`
-- `ToolExecutor`
-- `ToolResult`
-- `ToolRiskLevel`
-- Shared argument validator
+---
+
+## FileSystemService
+
+The FileSystemService performs the actual filesystem operations.
+
+Examples include:
+
+- List directory
+- Read text
+- Write text
+- Create directory
+- File information
+
+The service intentionally contains no AI logic.
+
+---
+
+# Tool Framework
+
+Directory:
+
+```text
+atlas/tools/
+```
+
+The tool framework provides a common execution model for every capability exposed to the Agent.
+
+Responsibilities:
+
+- Tool registration
+- Tool discovery
+- Argument validation
+- Execution
+- Result formatting
+- Logging
+
+Every tool shares the same interface.
 
 Current built-in tools:
 
 - Calculator
 - Current Time
-- Confirmation Demo
 - List Directory
 - File Information
 - Read Text File
-- Create Directory
 - Write Text File
+- Create Directory
+- Confirmation Demo
 
-Tools declare:
+Future releases may add:
 
-- Risk level
-- Parameter schema
-- Confirmation requirement
+- Web Search
+- Python Execution
+- Desktop Automation
+- Vision
+- Robotics
 
-The tool framework does not decide whether a tool is allowed to execute.
+without changing the architecture.
 
-Authorization belongs to the permission subsystem.
+---
 
-### Shared Argument Validation
+## Tool Registry
 
-Location:
+The Tool Registry owns every available tool.
+
+Responsibilities:
+
+- Register tools
+- Lookup tools
+- Enumerate definitions
+
+The Agent never hardcodes available tools.
+
+Instead it queries the registry dynamically.
+
+This keeps prompt generation synchronized with the application's actual capabilities.
+
+---
+
+## Tool Executor
+
+The Tool Executor is responsible for running validated tools.
+
+Responsibilities:
+
+- Validate arguments
+- Execute tools
+- Measure execution time
+- Produce ToolResult objects
+- Emit audit logs
+
+The executor does not perform permission evaluation.
+
+Permission decisions always occur earlier in the pipeline.
+
+---
+
+# Request Processing Pipeline
+
+Version 1.0.0 introduces a layered request pipeline.
+
+Every natural-language request follows the same architecture.
 
 ```text
-src/atlas/tools/validation.py
+User
+ │
+ ▼
+Command Line Interface
+ │
+ ▼
+AtlasApp
+ │
+ ▼
+Built-in Command Detection
+ │
+ ├──────────────► Explicit Command
+ │                    │
+ │                    ▼
+ │               Execute Immediately
+ │
+ ▼
+Deterministic Routing
+ │
+ ├──────────────► Known Safe Pattern
+ │                    │
+ │                    ▼
+ │             Create Tool Request
+ │
+ ▼
+Agent Service
+ │
+ ▼
+Prompt Builder
+ │
+ ▼
+Model Provider
+ │
+ ▼
+Structured JSON Decision
+ │
+ ▼
+Decision Parser
+ │
+ ▼
+Decision Models
+ │
+ ▼
+Tool Validation
+ │
+ ▼
+Permission Evaluation
+ │
+ ▼
+Tool Execution
+ │
+ ▼
+Trusted Tool Result
+ │
+ ▼
+Conversation Storage
+ │
+ ▼
+User
 ```
 
-The shared validator enforces supported JSON-schema fields before permission evaluation and again before execution.
+Every stage performs one responsibility.
 
-Current validation includes:
+This separation greatly improves:
 
-- Root object schema
-- Required arguments
-- Unknown arguments
-- String values
-- Boolean values
-- Integer values
-- Number values
-- Object values
-- Array values
-- Null values
-- Enum values
-- Nested object schemas
-- Array item schemas
+- Maintainability
+- Testing
+- Reliability
+- Security
 
-This avoids duplicating basic schema validation inside every tool.
+---
 
-Individual tools remain responsible for domain-specific validation.
+# Deterministic Routing
+
+Some requests are recognized before reaching the language model.
 
 Examples include:
 
-- Arithmetic syntax restrictions
-- Filesystem path scope
-- UTF-8 requirements
-- File size limits
-- Existing-file overwrite behavior
+- Create a folder...
+- Create a file...
+- Write a file...
+
+These requests are converted directly into structured tool requests.
+
+Benefits include:
+
+- Faster execution
+- Lower model usage
+- Predictable behavior
+- Guaranteed permission evaluation
+
+Deterministic routing reduces model hallucinations while preserving the agent architecture.
 
 ---
 
-# Request Processing Flow
+# Confirmation Workflow
 
-Every user request passes through ATLAS Core.
+Medium-risk operations pause before execution.
 
-Normal conversation follows:
-
-```text
-User
-  ↓
-Command-Line Interface
-  ↓
-ATLAS Core
-  ↓
-Memory Context
-  ↓
-Conversation Context
-  ↓
-Model Provider
-  ↓
-Assistant Response
-  ↓
-Conversation Storage
-```
-
-Tool execution follows:
+Current workflow:
 
 ```text
-User
-  ↓
-ATLAS Core
-  ↓
-Parse Command
-  ↓
-Decode JSON
-  ↓
-Require JSON Object
-  ↓
-Tool Registry
-  ↓
-Retrieve Tool Definition
-  ↓
-Shared Argument Validation
-  ↓
-Permission Service
-  ↓
-Permission Policy
-  ↓
-Allow / Confirm / Deny
-  ↓
-Tool Executor
-  ↓
-Defense-in-Depth Validation
-  ↓
-Tool Implementation
-  ↓
-Tool Result
-  ↓
-User
+User Request
+      │
+      ▼
+Agent
+      │
+      ▼
+Permission Evaluation
+      │
+      ▼
+CONFIRM
+      │
+      ▼
+Pending Request Stored
+      │
+      ▼
+User:
+confirm yes
+      │
+      ▼
+Execute Tool
+
+or
+
+confirm no
+      │
+      ▼
+Discard Request
 ```
 
-Important rules:
+Pending requests exist only during the current application session.
 
-- Invalid JSON never reaches the registry.
-- Non-object arguments are rejected.
-- Unknown tools never reach permission evaluation.
-- Invalid arguments never enter the confirmation workflow.
-- Denied tools never reach execution.
-- Confirmation-controlled tools remain pending until explicitly approved.
-- Approved requests execute exactly once.
-- Pending requests are cleared after approval or denial.
-- The executor validates arguments again immediately before execution.
-
-The permission system forms the authorization boundary between a valid tool request and tool execution.
+No filesystem changes occur before approval.
 
 ---
 
-# Filesystem Tool Flow
+# Data Storage
 
-Read-only filesystem operations follow:
-
-```text
-User
-  ↓
-ATLAS Core
-  ↓
-Shared Argument Validation
-  ↓
-Permission Decision: Allow
-  ↓
-Tool Executor
-  ↓
-Filesystem Tool
-  ↓
-FileSystemService
-  ↓
-ScopedPathResolver
-  ↓
-Allowed Workspace
-  ↓
-Result
-```
-
-State-changing filesystem operations follow:
+Current persistent storage includes:
 
 ```text
-User
-  ↓
-ATLAS Core
-  ↓
-Shared Argument Validation
-  ↓
-Permission Decision: Confirm
-  ↓
-Pending Request
-  ↓
-User enters confirm yes or confirm no
-  ↓
-Approval or Denial
-  ↓
-Tool Executor
-  ↓
-Filesystem Tool
-  ↓
-FileSystemService
-  ↓
-ScopedPathResolver
-  ↓
-Allowed Workspace
+SQLite
+
+├── Memory Database
+
+└── Conversation Database
 ```
 
-A write or directory-creation request cannot modify the filesystem before explicit approval.
+Local files:
+
+```text
+workspace/
+logs/
+data/
+```
+
+No cloud database currently exists.
+
+All persistent storage remains local by default.
 
 ---
 
 # Dependency Direction
 
-Dependencies should point toward stable interfaces rather than concrete implementations.
-
-Current tool and filesystem dependency direction:
+Subsystem dependencies intentionally flow in one direction.
 
 ```text
-ATLAS Core
-    ↓
-Tool Registry
-    ↓
-Shared Argument Validator
-    ↓
-Permission Service
-    ↓
-Permission Policy
-    ↓
-Tool Executor
-    ↓
-Filesystem Tool
-    ↓
-FileSystemService
-    ↓
-ScopedPathResolver
+CLI
+ │
+ ▼
+AtlasApp
+ │
+ ├────────► Agent
+ │
+ ├────────► Memory
+ │
+ ├────────► Conversations
+ │
+ ├────────► Permissions
+ │
+ ├────────► Tools
+ │
+ ├────────► Filesystem
+ │
+ └────────► Models
 ```
 
-Subsystems should avoid unnecessary cross-dependencies.
+Subsystems should avoid depending on each other whenever possible.
 
-For example, this is discouraged:
+AtlasApp remains the central coordinator.
 
-```text
-Memory
-   ↓
-Models
-   ↓
-Filesystem
-```
-
-Instead, coordination should occur through ATLAS Core or another dedicated orchestration service.
-
-Tools declare their metadata but must never authorize themselves.
-
-Authorization belongs to the permission subsystem.
-
-Filesystem scope enforcement belongs to the filesystem subsystem.
-
----
-
-# Data Storage Architecture
-
-Project ATLAS separates long-term storage into independent persistence layers.
-
-Current storage architecture:
-
-```text
-                SQLite Database
-                      │
-      ┌───────────────┴───────────────┐
-      │                               │
- Persistent Memory             Conversations
-      │                               │
- Memory Service            Conversation Service
-      │                               │
-      └───────────────┬───────────────┘
-                      │
-                  ATLAS Core
-```
-
-The local filesystem workspace is separate from SQLite persistence:
-
-```text
-Configured Workspace
-        │
-ScopedPathResolver
-        │
-FileSystemService
-        │
-Filesystem Tools
-        │
-ATLAS Core
-```
-
-Current persisted information:
-
-- Long-term memories
-- Conversation metadata
-- Conversation messages
-- User-approved workspace files and directories
-
-Current non-persistent information:
-
-- Pending confirmation requests
-- Active model provider
-- Runtime configuration
-- Current request state
-
-Future storage layers may include:
-
-- Vector databases
-- File indexes
-- Document indexes
-- User preferences
-- Permission policies
-- Planning history
-- Robotics state
-
-Keeping storage responsibilities isolated allows individual persistence mechanisms to evolve independently.
-
----
-
-# Error Handling Philosophy
-
-Every subsystem should fail safely.
-
-General rules:
-
-- Invalid input should produce validation errors.
-- Internal failures should produce descriptive exceptions.
-- Failures should be logged.
-- Sensitive information should never appear in exception messages.
-- Partial failures should not corrupt persistent state.
-- Invalid operations should not reach permission or execution unnecessarily.
-
-Current exception categories include:
-
-- Configuration errors
-- Model errors
-- Memory errors
-- Conversation errors
-- Tool errors
-- Permission errors
-- Filesystem errors
-
-Filesystem exception hierarchy includes:
-
-- `FileSystemError`
-- `FileSystemValidationError`
-- `PathOutsideAllowedScopeError`
-- `FileSystemOperationError`
-
-Future releases may introduce:
-
-- Recovery strategies
-- Retry policies
-- Fault isolation
-- Background error reporting
-
----
+This architecture minimizes coupling and simplifies future expansion.
 
 # Testing Architecture
 
-Testing is organized by subsystem.
+Project ATLAS emphasizes automated testing as a first-class architectural requirement.
+
+Every subsystem owns its own tests.
+
+Current test coverage includes:
 
 ```text
 tests/
+
+├── test_agent_models.py
+├── test_agent_parser.py
+├── test_agent_prompt.py
+├── test_agent_service.py
 ├── test_app.py
+├── test_app_agent.py
 ├── test_conversations.py
 ├── test_filesystem.py
 ├── test_main.py
@@ -1092,339 +1076,312 @@ tests/
 └── test_tools.py
 ```
 
-Current test coverage includes:
+Current automated coverage includes:
 
-- Model provider behavior
-- Memory persistence
-- Conversation persistence
-- Structured logging
-- Permission decisions
-- Confirmation workflows
+- Agent decision parsing
+- Prompt generation
+- Structured JSON validation
+- Tool validation
 - Tool registration
-- Shared schema validation
-- Filesystem path scope
-- Filesystem service behavior
-- Filesystem tool integration
-- Core orchestration
+- Tool execution
+- Permission evaluation
+- Confirmation workflow
+- Filesystem protection
+- Conversation persistence
+- Memory persistence
+- Logging configuration
+- Provider abstraction
+- CLI behavior
+- AtlasApp orchestration
 
-Testing philosophy:
+Version 1.0.0 contains over **200 automated tests** covering every major subsystem.
 
-- Unit tests validate individual components.
-- Integration tests validate subsystem interaction.
-- Core tests validate orchestration.
-- Security boundaries require explicit regression tests.
-- Every bug should eventually receive a regression test.
+Continuous Integration automatically runs:
 
-Current v0.9.0 test suite:
+- Ruff
+- MyPy
+- Pytest
+
+on every pull request.
+
+---
+
+# Error Handling
+
+ATLAS uses explicit exception types throughout the application.
+
+Every subsystem owns its own exceptions.
+
+Examples include:
 
 ```text
-131 passing tests
+AgentError
+
+PermissionError
+
+ToolError
+
+FileSystemError
+
+MemoryDatabaseError
+
+ConversationDatabaseError
+
+ModelError
 ```
 
-Future testing additions include:
+Exceptions are never silently ignored.
 
-- Performance tests
-- Load tests
-- Long-running memory tests
-- Tool stress testing
-- Voice-interface tests
-- Robotics simulation tests
+Instead they are:
+
+- Logged
+- Propagated
+- Displayed with user-friendly messages
+
+Unexpected failures should never leave ATLAS in an inconsistent state.
 
 ---
 
 # Logging Architecture
 
-Every significant operation should be observable.
+Structured logging is available throughout every subsystem.
 
-Current logging includes:
+Major logging events include:
 
-- Startup
-- Shutdown
-- Request IDs
-- Request timing
+- Application startup
+- Application shutdown
+- Request processing
+- Model requests
+- Agent decisions
+- Permission evaluation
+- Confirmation decisions
+- Tool execution
+- Filesystem operations
 - Memory operations
 - Conversation operations
-- Tool execution
-- Permission decisions
-- Filesystem operations
-- Errors
+- Exceptions
 
-Future logging additions:
+Sensitive information is intentionally excluded from logs.
 
-- Performance metrics
-- Memory statistics
-- Model latency
-- Tool latency
-- Resource usage
-- Hardware telemetry
+Examples include:
 
-Logs should help developers understand system behavior without exposing private user information.
+- Conversation history
+- Memory contents
+- API keys
+- Environment variables
+- File contents
+- User documents
 
-Complete user messages, complete file contents, credentials, and secrets must not be written to logs.
+Logs exist for diagnostics rather than analytics.
 
 ---
 
 # Security Architecture
 
-Security is implemented in layers.
+Security is enforced through multiple independent layers.
 
-Current layers:
+Current layers include:
 
 ```text
-User
-   ↓
-Command Parsing
-   ↓
-JSON Decoding
-   ↓
-Shared Argument Validation
-   ↓
+User Request
+      │
+      ▼
+Structured Agent Decision
+      │
+      ▼
+Decision Validation
+      │
+      ▼
+Registered Tool Verification
+      │
+      ▼
+Argument Validation
+      │
+      ▼
 Permission Evaluation
-   ↓
-Authorized Tool Execution
-   ↓
-Filesystem Scope Enforcement
-   ↓
-Structured Logging
+      │
+      ▼
+Confirmation Workflow
+      │
+      ▼
+Scoped Filesystem
+      │
+      ▼
+Tool Execution
 ```
 
-Principles:
+Each layer assumes previous layers may fail.
 
-- Validation before authorization
-- Authorization before execution
-- Scope enforcement inside the target subsystem
-- Least privilege
-- Explicit authorization
-- Safe defaults
-- Deny by default for high-risk actions
-- Audit significant operations
-- Defense-in-depth validation
+This defense-in-depth architecture minimizes the impact of unexpected model behavior.
 
-Filesystem-specific protections include:
+Current protections include:
 
-- Configured allowed roots
-- Canonical path resolution
-- Parent-traversal rejection
-- Absolute-path scope checks
-- UTF-8-only reads
-- Read-size limits
-- Write-size limits
-- Existing-file overwrite protection
-- Confirmation for state-changing operations
-- No deletion support in v0.9.0
-- No unrestricted shell execution
+- Registered tools only
+- Structured JSON decisions
+- Argument-schema validation
+- Unknown-field rejection
+- Unknown-tool rejection
+- Permission enforcement
+- Confirmation requirements
+- Filesystem sandboxing
+- Path traversal prevention
+- Read/write limits
+- Audit logging
 
-Future work includes:
-
-- Authentication
-- Role-based authorization
-- Trusted devices
-- Encrypted storage
-- Secure secrets management
-- Persistent scoped grants
-- Hardware safety controls
+No individual subsystem can bypass every protection.
 
 ---
 
 # Current Limitations
 
-ATLAS v0.9.0 intentionally limits filesystem functionality.
+Version 1.0.0 intentionally limits the Agent's autonomy.
 
 Current limitations include:
 
-- Text files must be valid UTF-8
-- Binary file reading is not supported
-- File deletion is not supported
-- File renaming is not supported
-- File moving is not supported
-- File copying is not supported
-- Symbolic-link management is not exposed
-- Only configured directories are accessible
-- Persistent permission grants are not supported
-- Tool selection still requires explicit CLI commands
+- One tool per model-selected request
+- No autonomous planning
+- No recursive reasoning
+- No background execution
+- No task scheduling
+- No web access
+- No Python execution
+- No desktop automation
+- No unrestricted filesystem access
+- No unrestricted shell execution
 
-These limitations keep the first filesystem release narrow, testable, and secure.
+These limitations are intentional.
+
+Future releases will expand capabilities gradually while maintaining strong security guarantees.
 
 ---
 
 # Future Architecture
 
-As Project ATLAS evolves, additional subsystems will be introduced.
+Future releases will expand the architecture without replacing the existing foundation.
 
-Planned architecture:
+Planned additions include:
 
 ```text
-                          User
-                            │
-      ┌─────────────────────┼─────────────────────┐
-      │                     │                     │
- Desktop UI            Voice Interface       Remote Client
-      │                     │                     │
-      └─────────────────────┼─────────────────────┘
-                            │
-                       ATLAS Core
-                            │
- ┌─────────┬─────────┬─────────┬─────────┬─────────┐
- │         │         │         │         │         │
-Models   Memory  Conversations Vision  Planning  Knowledge
- │         │         │         │         │         │
- └───────────────────┼────────────────────────────────────┘
-                     │
-              Tool Registry
-                     │
-          Shared Validation Layer
-                     │
-              Permission System
-                     │
-        ┌────────────┼────────────┐
-        │            │            │
-   Local Tools   Remote APIs   Hardware
-        │            │            │
-        └────────────┴────────────┘
-                     │
-          Scoped Resource Services
-                     │
-           Logging & Observability
+Planning Engine
+
+↓
+
+Multi-Step Agent Loop
+
+↓
+
+Semantic Memory
+
+↓
+
+Web Research
+
+↓
+
+Code Execution
+
+↓
+
+Desktop Automation
+
+↓
+
+Voice
+
+↓
+
+Vision
+
+↓
+
+Robotics
 ```
 
-This architecture intentionally allows future interfaces and capabilities to be added without redesigning the existing core.
+Every future subsystem will integrate through existing interfaces whenever practical.
+
+This minimizes architectural disruption while enabling long-term growth.
 
 ---
 
 # Scalability
 
-Project ATLAS is designed to scale in multiple dimensions.
+ATLAS is designed to scale horizontally by adding capabilities rather than rewriting core systems.
 
-Current scalability goals include:
+Future expansion should primarily involve:
 
-- Additional AI providers
-- Larger memory stores
-- More conversations
-- Larger tool libraries
-- Multiple allowed filesystem roots
+- Registering additional tools
+- Adding new providers
+- Creating new services
+- Introducing new subsystems
+- Extending prompt generation
+- Expanding planning capabilities
 
-Future scalability goals include:
-
-- Multiple concurrent users
-- Distributed inference
-- Network services
-- Multi-device synchronization
-- Raspberry Pi clients
-- Dedicated ATLAS hardware
-- Robotics integration
-
-Subsystem isolation minimizes the impact of future expansion.
+AtlasApp should remain a lightweight coordinator rather than accumulating subsystem logic.
 
 ---
 
 # Engineering Principles
 
-Every subsystem should follow these principles.
+Every subsystem should satisfy the following principles:
 
-## Single Responsibility
+- Single responsibility
+- Strong typing
+- Comprehensive testing
+- Explicit validation
+- Structured logging
+- Modular design
+- Stable interfaces
+- Clear documentation
 
-Each subsystem should solve one primary problem.
-
-## Stable Interfaces
-
-Public interfaces should change infrequently.
-
-## Strong Typing
-
-Use explicit typing throughout the project.
-
-## Dependency Injection
-
-Subsystems should receive dependencies rather than creating them internally whenever practical.
-
-## Testability
-
-Every subsystem should be independently testable.
-
-## Documentation
-
-Every subsystem should be documented before significant expansion.
-
-## Observability
-
-Operations should be visible through structured logging.
-
-## Security
-
-Validation and authorization should occur before execution.
-
-## Defense in Depth
-
-Critical boundaries should be checked at more than one layer.
-
-## Extensibility
-
-New functionality should primarily be added through new modules instead of modifying unrelated code.
+Architectural consistency is preferred over rapid feature development.
 
 ---
 
 # Long-Term Vision
 
-Project ATLAS is not intended to become a single AI model.
+The long-term goal of Project ATLAS is to become a complete AI operating system capable of safely coordinating complex workflows across multiple domains.
 
-It is intended to become a complete personal AI operating platform capable of:
+Future capabilities include:
 
-- Running local or cloud AI models
-- Maintaining reliable long-term memory
-- Managing conversations
-- Safely executing tools
-- Interacting with scoped local files
-- Assisting with engineering workflows
-- Understanding documents
-- Speaking naturally
-- Seeing through cameras and screenshots
-- Coordinating multiple devices
-- Operating dedicated hardware
-- Supporting robotics
+- Autonomous engineering assistance
+- Personal knowledge management
+- Research assistance
+- Desktop automation
+- Voice interaction
+- Vision understanding
+- Robotics integration
 
-Every release should strengthen the underlying architecture rather than increasing unnecessary complexity.
+These capabilities will be built incrementally on top of the existing architecture rather than replacing it.
 
 ---
 
 # Architecture Summary
 
-The architecture of Project ATLAS is intentionally layered.
+Version 1.0.0 establishes the first true agent architecture for Project ATLAS.
 
-```text
-User Interfaces
-        │
-        ▼
-   ATLAS Core
-        │
-        ▼
-Application Services
-        │
-        ▼
-Shared Validation
-        │
-        ▼
-Permission System
-        │
-        ▼
-Tool Framework
-        │
-        ▼
-Scoped Resource Services
-        │
-        ▼
-Infrastructure and Persistence
-```
+Major architectural capabilities now include:
 
-Each layer has a clearly defined responsibility.
+- Modular subsystem design
+- Provider-independent AI models
+- Persistent memory
+- Persistent conversations
+- Structured logging
+- Extensible tool framework
+- Permission enforcement
+- Secure filesystem access
+- Structured agent decisions
+- Dynamic tool selection
+- Deterministic safety routing
+- Trusted tool execution
+- Confirmation-controlled actions
+- Comprehensive automated testing
 
-Higher layers coordinate behavior.
-
-Lower layers provide reusable capabilities and enforce local safety boundaries.
-
-Maintaining this separation allows Project ATLAS to evolve from a command-line AI assistant into a secure, agent-driven, voice-first, multi-device AI operating platform without requiring major architectural redesigns.
+Future releases will build upon this foundation by introducing bounded multi-step planning, richer memory retrieval, additional tools, and broader interaction capabilities while preserving the modular architecture established in Version 1.0.0.
 
 ---
 
-**Document Version:** ATLAS v0.9.0
-**Status:** Current Architecture
+**Architecture Version:** v1.0.0
+
+**Document Status:** Current
+
 **Last Updated:** August 2026

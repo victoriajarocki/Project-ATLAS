@@ -2,6 +2,10 @@
 
 import logging
 
+from atlas.agent.exceptions import AgentError
+from atlas.agent.parser import AgentDecisionParser
+from atlas.agent.prompt import AgentPromptBuilder
+from atlas.agent.service import AgentService
 from atlas.config.settings import Settings, load_settings
 from atlas.conversations.database import (
     ConversationDatabaseError,
@@ -41,7 +45,7 @@ from atlas.tools.registry import ToolRegistry
 
 ATLAS_NAME = "ATLAS"
 
-ATLAS_VERSION = "0.9.0"
+ATLAS_VERSION = "1.0.0"
 
 EXIT_COMMANDS = {
     "exit",
@@ -62,11 +66,19 @@ def run_cli(app: AtlasApp) -> None:
     print(f"Conversation sessions: {'Enabled' if app.conversations_enabled else 'Disabled'}")
     print(f"Tool system: {'Enabled' if app.tools_enabled else 'Disabled'}")
     print(f"Permission system: {'Enabled' if app.permissions_enabled else 'Disabled'}")
+    print(f"Agent system: {'Enabled' if app.agent_enabled else 'Disabled'}")
 
     if app.active_conversation_id is not None:
         print(f"Active chat: {app.active_conversation_id}")
 
     print("=" * 50)
+
+    print("Natural-language agent examples:")
+    print("  What is 347 multiplied by 982?")
+    print("  What time is it?")
+    print("  List the files in my workspace.")
+    print("  Read Rocket Design/notes.txt")
+    print()
 
     print("Memory commands:")
     print("  remember <information>")
@@ -82,14 +94,11 @@ def run_cli(app: AtlasApp) -> None:
     print("  history")
     print()
 
-    print("General tool commands:")
+    print("Explicit tool commands:")
     print("  tools")
     print('  tool calculator {"expression": "2 + 2"}')
     print("  tool current_time {}")
     print('  tool confirmation_demo {"message": "Approved action"}')
-    print()
-
-    print("File-system tool commands:")
     print('  tool list_directory {"path": "."}')
     print('  tool file_info {"path": "example.txt"}')
     print('  tool read_text_file {"path": "example.txt"}')
@@ -124,6 +133,7 @@ def run_cli(app: AtlasApp) -> None:
         try:
             response = app.process_message(user_message)
         except (
+            AgentError,
             ModelError,
             ConversationDatabaseError,
             MemoryDatabaseError,
@@ -159,18 +169,18 @@ def create_app(settings: Settings) -> AtlasApp:
     )
 
     conversation_repository = SQLiteConversationRepository(
-        database_path=(settings.memory_database_path)
+        database_path=settings.memory_database_path
     )
     conversation_service = ConversationService(conversation_repository)
     conversation_service.initialize()
 
     logger.info("Conversation sessions initialized.")
 
-    path_resolver = ScopedPathResolver(allowed_directories=(settings.allowed_directories))
+    path_resolver = ScopedPathResolver(allowed_directories=settings.allowed_directories)
 
     filesystem_service = FileSystemService(
         path_resolver=path_resolver,
-        max_read_bytes=(settings.filesystem_max_read_bytes),
+        max_read_bytes=settings.filesystem_max_read_bytes,
         max_write_characters=(settings.filesystem_max_write_characters),
     )
 
@@ -189,7 +199,6 @@ def create_app(settings: Settings) -> AtlasApp:
     tool_registry.register(CalculatorTool())
     tool_registry.register(CurrentTimeTool())
     tool_registry.register(ConfirmationDemoTool())
-
     tool_registry.register(ListDirectoryTool(filesystem_service))
     tool_registry.register(FileInfoTool(filesystem_service))
     tool_registry.register(ReadTextFileTool(filesystem_service))
@@ -203,11 +212,19 @@ def create_app(settings: Settings) -> AtlasApp:
         len(tool_registry.list_definitions()),
     )
 
-    permission_policy = PermissionPolicy()
-
-    permission_service = PermissionService(permission_policy)
+    permission_service = PermissionService(PermissionPolicy())
 
     logger.info("Permission system initialized.")
+
+    agent_service = AgentService(
+        model_provider=provider,
+        prompt_builder=AgentPromptBuilder(tool_registry),
+        decision_parser=AgentDecisionParser(),
+        tool_executor=tool_executor,
+        permission_service=permission_service,
+    )
+
+    logger.info("Agent system initialized.")
 
     app = AtlasApp(
         model_provider=provider,
@@ -215,6 +232,7 @@ def create_app(settings: Settings) -> AtlasApp:
         conversation_service=conversation_service,
         tool_executor=tool_executor,
         permission_service=permission_service,
+        agent_service=agent_service,
     )
 
     logger.info("ATLAS application created successfully.")
@@ -231,7 +249,7 @@ def main() -> None:
             log_directory=settings.log_directory,
             log_level=settings.log_level,
             max_bytes=settings.log_max_bytes,
-            backup_count=(settings.log_backup_count),
+            backup_count=settings.log_backup_count,
         )
 
         logger.info(
@@ -242,9 +260,10 @@ def main() -> None:
         )
 
         app = create_app(settings)
-
         run_cli(app)
+
     except (
+        AgentError,
         ModelError,
         MemoryDatabaseError,
         ConversationDatabaseError,
@@ -254,7 +273,7 @@ def main() -> None:
     ) as error:
         logger.exception("ATLAS startup failed.")
         print(f"ATLAS STARTUP ERROR: {error}")
-        return
+
     finally:
         logging.shutdown()
 

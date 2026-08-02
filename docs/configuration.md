@@ -61,11 +61,22 @@ ATLAS_FILESYSTEM_MAX_READ_BYTES=1000000
 ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS=1000000
 ```
 
+Version 1.0.0 does not introduce additional agent-specific environment variables.
+
+The agent uses:
+
+- The configured model provider
+- The configured model
+- Registered tool definitions
+- Existing permission policies
+- Existing filesystem boundaries
+- Existing memory and conversation services
+
 ---
 
-## Model Provider Settings
+# Model Provider Settings
 
-### `ATLAS_PROVIDER`
+## `ATLAS_PROVIDER`
 
 Selects the active model provider.
 
@@ -83,7 +94,9 @@ Example:
 ATLAS_PROVIDER=ollama
 ```
 
-### Mock Provider
+---
+
+## Mock Provider
 
 ```dotenv
 ATLAS_PROVIDER=mock
@@ -95,9 +108,14 @@ The Mock provider:
 - Requires no API key
 - Requires no network connection
 - Produces deterministic responses
-- Is useful for testing infrastructure
+- Is useful for testing application infrastructure
+- Is used by automated tests through scripted providers and test fixtures
 
-### Ollama Provider
+The Mock provider is not intended to provide real natural-language reasoning.
+
+---
+
+## Ollama Provider
 
 ```dotenv
 ATLAS_PROVIDER=ollama
@@ -105,19 +123,47 @@ ATLAS_MODEL=qwen3:4b
 OLLAMA_HOST=http://localhost:11434
 ```
 
+The Ollama provider enables local model inference.
+
 The selected model must already be installed:
 
 ```powershell
 ollama list
 ```
 
-Install it when necessary:
+Install the recommended local development model when necessary:
 
 ```powershell
 ollama pull qwen3:4b
 ```
 
-### OpenAI Provider
+Confirm that Ollama is reachable:
+
+```powershell
+Invoke-RestMethod http://localhost:11434/api/tags
+```
+
+Version 1.0.0 uses Ollama for:
+
+- Natural-language responses
+- Structured agent decisions
+- JSON-schema-constrained output
+- Automatic tool selection
+
+The Ollama provider automatically configures structured agent requests with:
+
+- JSON-schema output
+- Thinking disabled
+- Low-temperature generation
+- Output-length limits
+- Model keep-alive behavior
+- Defensive output cleanup
+
+These settings are currently implemented by the provider and are not configurable through `.env`.
+
+---
+
+## OpenAI Provider
 
 ```dotenv
 ATLAS_PROVIDER=openai
@@ -135,8 +181,11 @@ README.md
 source files
 tests
 GitHub Issues
+pull-request descriptions
 commit messages
 ```
+
+The OpenAI provider must use a model supported by the installed provider implementation.
 
 ---
 
@@ -156,6 +205,22 @@ ATLAS_MODEL=qwen3:4b
 
 The name must be valid for the active provider.
 
+Agent quality may vary between models.
+
+A model used for the v1.0.0 agent should reliably support:
+
+- Instruction following
+- Structured JSON generation
+- Tool selection
+- Basic conversation context
+- Short final responses
+
+The current recommended local development model is:
+
+```text
+qwen3:4b
+```
+
 ---
 
 ## `OLLAMA_HOST`
@@ -169,6 +234,16 @@ OLLAMA_HOST=http://localhost:11434
 ```
 
 Most local installations should keep this value unchanged.
+
+A custom host may be used when Ollama runs on another approved machine:
+
+```dotenv
+OLLAMA_HOST=http://192.168.1.25:11434
+```
+
+Remote Ollama access may expose user prompts and context to another device.
+
+Use a remote host only when the device and network are trusted.
 
 ---
 
@@ -194,9 +269,51 @@ Do not place a real key in `.env.example`.
 
 ---
 
-## Persistence Settings
+# Agent Configuration
 
-### `ATLAS_MEMORY_DATABASE`
+Version 1.0.0 introduces the ATLAS agent foundation.
+
+The current agent does not require separate environment variables.
+
+When the agent is enabled during application construction, it automatically uses:
+
+- The active model provider
+- The registered tool catalog
+- The shared tool validator
+- The active permission policy
+- Conversation context
+- Persistent-memory context
+- Configured filesystem boundaries
+
+Current agent behavior includes:
+
+- Direct-response decisions
+- Single-tool decisions
+- Natural-language tool selection
+- Structured decision parsing
+- Permission-aware execution
+- Confirmation-controlled state changes
+- Deterministic routing for recognized file and folder creation requests
+- Trusted tool-result responses
+
+The current agent is limited to one model-selected tool per request.
+
+Future releases may add configuration such as:
+
+```text
+ATLAS_AGENT_MAX_STEPS
+ATLAS_AGENT_TIMEOUT_SECONDS
+ATLAS_AGENT_RETRY_LIMIT
+ATLAS_AGENT_PLANNING_MODE
+```
+
+These variables are not currently implemented and must not be added to `.env` until corresponding source-code support exists.
+
+---
+
+# Persistence Settings
+
+## `ATLAS_MEMORY_DATABASE`
 
 Specifies the SQLite file used for persistent memory and conversation history.
 
@@ -220,13 +337,15 @@ ATLAS currently uses the same SQLite database path for:
 - Conversation metadata
 - Conversation messages
 
+Agent-generated responses and trusted tool results may be stored in conversation history.
+
 Future releases may separate these storage locations.
 
 ---
 
-## Logging Settings
+# Logging Settings
 
-### `ATLAS_LOG_DIRECTORY`
+## `ATLAS_LOG_DIRECTORY`
 
 Specifies the directory containing runtime logs.
 
@@ -236,7 +355,11 @@ Default:
 ATLAS_LOG_DIRECTORY=logs
 ```
 
-### `ATLAS_LOG_LEVEL`
+The directory is created when necessary.
+
+---
+
+## `ATLAS_LOG_LEVEL`
 
 Controls the minimum logging severity.
 
@@ -262,7 +385,22 @@ Use `DEBUG` only when investigating a problem:
 ATLAS_LOG_LEVEL=DEBUG
 ```
 
-### `ATLAS_LOG_MAX_BYTES`
+Version 1.0.0 logs agent operations such as:
+
+- Structured decision requests
+- Direct-response selection
+- Tool selection
+- Deterministic routing
+- Permission decisions
+- Confirmation resolution
+- Tool execution
+- Request duration
+
+ATLAS logs message lengths and operation metadata rather than complete private content.
+
+---
+
+## `ATLAS_LOG_MAX_BYTES`
 
 Specifies the maximum size of the active log file before rotation.
 
@@ -276,7 +414,9 @@ This is approximately 5 MB.
 
 The value must be a positive integer.
 
-### `ATLAS_LOG_BACKUP_COUNT`
+---
+
+## `ATLAS_LOG_BACKUP_COUNT`
 
 Specifies the number of rotated log files retained.
 
@@ -304,13 +444,17 @@ git check-ignore logs\atlas.log
 
 ---
 
-## Filesystem Settings
+# Filesystem Settings
 
-ATLAS v0.9.0 introduces secure local filesystem access.
+ATLAS uses secure local filesystem access introduced in v0.9.0 and integrated with the agent in v1.0.0.
 
 Filesystem operations are restricted to explicitly configured directories.
 
-### `ATLAS_ALLOWED_DIRECTORIES`
+The agent cannot bypass these boundaries.
+
+---
+
+## `ATLAS_ALLOWED_DIRECTORIES`
 
 Specifies the directories that ATLAS may access.
 
@@ -347,7 +491,9 @@ If a configured directory does not exist, the scoped path resolver creates it du
 
 A configured allowed path must represent a directory rather than a file.
 
-### Relative Path Behavior
+---
+
+## Relative Path Behavior
 
 Relative tool paths resolve against the first configured allowed directory.
 
@@ -357,10 +503,16 @@ For example:
 ATLAS_ALLOWED_DIRECTORIES=workspace
 ```
 
-and:
+An explicit request such as:
 
 ```text
 tool read_text_file {"path": "Rocket Design/notes.txt"}
+```
+
+and a natural-language request such as:
+
+```text
+Read Rocket Design/notes.txt.
 ```
 
 resolve to:
@@ -369,9 +521,27 @@ resolve to:
 <Project-ATLAS>/workspace/Rocket Design/notes.txt
 ```
 
-### Windows JSON Paths
+When the user asks:
 
-Use forward slashes inside JSON tool commands:
+```text
+What files are in my workspace?
+```
+
+the agent normally selects `list_directory` with:
+
+```json
+{
+  "path": "."
+}
+```
+
+The relative path `.` represents the first configured allowed directory.
+
+---
+
+## Windows JSON Paths
+
+Use forward slashes inside explicit JSON tool commands:
 
 ```text
 Rocket Design/notes.txt
@@ -395,9 +565,11 @@ Rocket Design\\notes.txt
 
 Forward slashes are recommended.
 
+Natural-language requests do not require JSON escaping, but the agent-generated tool arguments still pass through the same scoped path resolver.
+
 ---
 
-### `ATLAS_FILESYSTEM_MAX_READ_BYTES`
+## `ATLAS_FILESYSTEM_MAX_READ_BYTES`
 
 Specifies the maximum file size ATLAS may read through `read_text_file`.
 
@@ -419,9 +591,14 @@ Example smaller limit:
 ATLAS_FILESYSTEM_MAX_READ_BYTES=100000
 ```
 
+This limit applies equally to:
+
+- Explicit tool commands
+- Agent-selected tool requests
+
 ---
 
-### `ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS`
+## `ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS`
 
 Specifies the maximum number of characters ATLAS may write through `write_text_file`.
 
@@ -441,9 +618,15 @@ Example smaller limit:
 ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS=100000
 ```
 
+This limit applies equally to:
+
+- Explicit tool commands
+- Agent-selected tool requests
+- Deterministically routed file-creation requests
+
 ---
 
-## Filesystem Security Behavior
+# Filesystem Security Behavior
 
 The filesystem configuration establishes the root boundaries used by `ScopedPathResolver`.
 
@@ -469,6 +652,7 @@ Current filesystem protections include:
 - Configurable write limits
 - Existing-file overwrite protection
 - Confirmation for state-changing tools
+- Shared behavior for explicit and agent-selected tools
 
 The following tools use filesystem configuration:
 
@@ -488,7 +672,7 @@ docs/filesystem.md
 
 ---
 
-## Workspace Configuration
+# Workspace Configuration
 
 The default local workspace is:
 
@@ -523,9 +707,11 @@ workspace\example.txt
 
 The `.gitkeep` file itself should remain tracked.
 
+Agent-created files and directories inside `workspace/` are local runtime data and should not be committed.
+
 ---
 
-## Configuration Loading
+# Configuration Loading
 
 ATLAS loads `.env` when the application starts.
 
@@ -539,6 +725,7 @@ You normally do not need to reinstall the package when changing:
 
 - Providers
 - Models
+- Ollama host
 - Log levels
 - Filesystem limits
 - Allowed directories
@@ -549,37 +736,50 @@ Reinstall the editable package only when project dependencies or package metadat
 python -m pip install -e ".[dev]"
 ```
 
+Restarting ATLAS is important because:
+
+- The provider is created during startup.
+- The agent receives that provider during startup.
+- Filesystem roots are resolved during startup.
+- Logging is configured during startup.
+
 ---
 
-## Inspecting Loaded Configuration
+# Inspecting Loaded Configuration
 
 You can inspect selected values through Python.
 
-### Active Provider
+## Active Provider
 
 ```powershell
 python -c "from atlas.config.settings import load_settings; print(load_settings().provider)"
 ```
 
-### Active Model
+## Active Model
 
 ```powershell
 python -c "from atlas.config.settings import load_settings; print(load_settings().model)"
 ```
 
-### Allowed Directories
+## Ollama Host
+
+```powershell
+python -c "from atlas.config.settings import load_settings; print(load_settings().ollama_host)"
+```
+
+## Allowed Directories
 
 ```powershell
 python -c "from atlas.config.settings import load_settings; print(load_settings().allowed_directories)"
 ```
 
-### Filesystem Limits
+## Filesystem Limits
 
 ```powershell
 python -c "from atlas.config.settings import load_settings; s=load_settings(); print(s.filesystem_max_read_bytes); print(s.filesystem_max_write_characters)"
 ```
 
-### Resolved Filesystem Path
+## Resolved Filesystem Path
 
 ```powershell
 python -c "from atlas.config.settings import load_settings; from atlas.filesystem.paths import ScopedPathResolver; s=load_settings(); r=ScopedPathResolver(s.allowed_directories); p=r.resolve('Rocket Design/notes.txt'); print('Allowed roots:', r.allowed_directories); print('Resolved file:', p); print('Exists:', p.exists())"
@@ -589,16 +789,16 @@ This is useful when diagnosing workspace-path problems.
 
 ---
 
-## Switching Between Providers
+# Switching Between Providers
 
-### Switch to Mock
+## Switch to Mock
 
 ```dotenv
 ATLAS_PROVIDER=mock
 ATLAS_MODEL=mock-model
 ```
 
-### Switch to Ollama
+## Switch to Ollama
 
 ```dotenv
 ATLAS_PROVIDER=ollama
@@ -606,7 +806,7 @@ ATLAS_MODEL=qwen3:4b
 OLLAMA_HOST=http://localhost:11434
 ```
 
-### Switch to OpenAI
+## Switch to OpenAI
 
 ```dotenv
 ATLAS_PROVIDER=openai
@@ -620,13 +820,20 @@ Restart ATLAS:
 atlas
 ```
 
-The startup display should report the selected provider.
+The startup display should report:
+
+- The selected provider
+- Memory status
+- Conversation status
+- Tool status
+- Permission status
+- Agent status
 
 ---
 
-## Recommended Development Configuration
+# Recommended Development Configuration
 
-A local Ollama configuration:
+## Local Agent Development with Ollama
 
 ```dotenv
 ATLAS_PROVIDER=ollama
@@ -647,7 +854,17 @@ ATLAS_FILESYSTEM_MAX_READ_BYTES=1000000
 ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS=1000000
 ```
 
-A fully offline testing configuration:
+Use this configuration for:
+
+- Real natural-language responses
+- Real structured agent decisions
+- Manual tool-selection testing
+- Manual confirmation testing
+- Local-first operation
+
+---
+
+## Offline Infrastructure Configuration
 
 ```dotenv
 ATLAS_PROVIDER=mock
@@ -668,11 +885,15 @@ ATLAS_FILESYSTEM_MAX_READ_BYTES=1000000
 ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS=1000000
 ```
 
+Use this configuration for infrastructure development that does not require real model behavior.
+
+Automated tests should use isolated settings and scripted providers rather than relying on the developer's `.env`.
+
 ---
 
-## Troubleshooting
+# Troubleshooting
 
-### ATLAS Still Uses the Old Provider
+## ATLAS Still Uses the Old Provider
 
 Confirm the `.env` file is located in the project root:
 
@@ -690,7 +911,7 @@ Restart ATLAS after saving `.env`.
 
 ---
 
-### Ollama Connection Error
+## Ollama Connection Error
 
 Check whether Ollama is running:
 
@@ -704,9 +925,11 @@ Verify the configured host:
 python -c "from atlas.config.settings import load_settings; print(load_settings().ollama_host)"
 ```
 
+Confirm that the Ollama application is running before launching ATLAS.
+
 ---
 
-### Missing Ollama Model
+## Missing Ollama Model
 
 Check installed models:
 
@@ -720,9 +943,212 @@ Download the configured model:
 ollama pull qwen3:4b
 ```
 
+Confirm that the `.env` model name exactly matches the installed model name.
+
 ---
 
-### Filesystem File Does Not Exist
+## Agent Returns Invalid JSON
+
+The v1.0.0 agent requests a structured decision from the active provider.
+
+When using Ollama, verify:
+
+```dotenv
+ATLAS_PROVIDER=ollama
+ATLAS_MODEL=qwen3:4b
+```
+
+Confirm that the configured model supports structured responses reliably.
+
+Restart Ollama and ATLAS when necessary.
+
+Review recent logs:
+
+```powershell
+Get-Content logs\atlas.log -Tail 100
+```
+
+The visible error may resemble:
+
+```text
+The model response was not valid JSON.
+```
+
+Do not weaken the parser to accept arbitrary model output.
+
+Structured decisions must remain validated.
+
+---
+
+## Agent Displays Internal Reasoning
+
+The Ollama provider is designed to:
+
+- Disable thinking
+- Request final output only
+- Remove leaked `<think>` blocks
+- Limit generated output
+
+Confirm that the current provider implementation is installed:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+Restart ATLAS.
+
+Review:
+
+```text
+src/atlas/models/ollama_provider.py
+```
+
+The application should never intentionally display:
+
+```text
+<think>
+```
+
+internal analysis, prompt instructions, or planning text.
+
+---
+
+## Agent Claims an Action Happened Without Confirmation
+
+Recognized file and folder creation requests should be routed deterministically.
+
+Examples:
+
+```text
+Create a folder called Test Folder.
+```
+
+```text
+Create a file called hello.txt that says Hello World.
+```
+
+Expected behavior:
+
+```text
+Tool create_directory requires confirmation.
+```
+
+or:
+
+```text
+Tool write_text_file requires confirmation.
+```
+
+If the model instead claims completion:
+
+1. Confirm that the latest `AgentService` is installed.
+2. Restart ATLAS.
+3. Run:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+4. Run the deterministic-routing tests:
+
+```powershell
+pytest tests\test_agent_service.py
+pytest tests\test_app_agent.py
+```
+
+5. Confirm the request matches a supported deterministic pattern.
+
+---
+
+## Tool Request Remains Pending
+
+While a medium-risk request is pending, ATLAS accepts:
+
+```text
+confirm yes
+```
+
+or:
+
+```text
+confirm no
+```
+
+Unrelated requests are blocked until the pending request is resolved.
+
+If the request should not execute, use:
+
+```text
+confirm no
+```
+
+Pending requests exist only in memory and are cleared when the ATLAS process exits.
+
+---
+
+## File or Directory Already Exists
+
+The current filesystem tools reject existing targets unless overwrite behavior is explicitly enabled and supported.
+
+Check:
+
+```powershell
+Test-Path "workspace\Test Folder"
+Test-Path "workspace\hello.txt"
+```
+
+Remove disposable test resources:
+
+```powershell
+Remove-Item "workspace\Test Folder" `
+    -Recurse `
+    -Force `
+    -ErrorAction SilentlyContinue
+
+Remove-Item "workspace\hello.txt" `
+    -Force `
+    -ErrorAction SilentlyContinue
+```
+
+Then restart the test.
+
+Do not remove real user data without verifying the path first.
+
+---
+
+## Current Time Is Incorrect
+
+The `current_time` tool uses:
+
+```python
+datetime.now().astimezone()
+```
+
+It therefore uses the timezone configured by the operating system.
+
+Check Windows settings:
+
+```text
+Settings
+→ Time & language
+→ Date & time
+→ Time zone
+```
+
+The tool should return a readable result such as:
+
+```text
+Current local time
+
+Saturday, August 01, 2026
+8:10:48 PM EDT
+```
+
+If the offset is correct but the displayed zone abbreviation is unexpected, verify the system timezone and daylight-saving settings.
+
+---
+
+## Filesystem File Does Not Exist
 
 First verify the real file:
 
@@ -749,15 +1175,15 @@ If the resolved path is not inside the intended project workspace, verify:
 ATLAS_ALLOWED_DIRECTORIES=workspace
 ```
 
-and make sure ATLAS was started from the project root.
+Make sure ATLAS was started from the project root.
 
 You may instead configure an absolute directory path.
 
 ---
 
-### Path Appears on Multiple Lines
+## Path Appears on Multiple Lines
 
-This usually means a single Windows backslash was used inside JSON:
+This usually means a single Windows backslash was used inside explicit JSON:
 
 ```text
 Rocket Design\notes.txt
@@ -779,7 +1205,7 @@ Rocket Design\\notes.txt
 
 ---
 
-### Path Outside Allowed Scope
+## Path Outside Allowed Scope
 
 An error stating that a path is outside configured directories means the path resolved beyond an allowed root.
 
@@ -789,7 +1215,7 @@ Review:
 ATLAS_ALLOWED_DIRECTORIES=workspace
 ```
 
-Then ensure the requested file is physically located inside that directory.
+Ensure the requested file is physically located inside that directory.
 
 Do not weaken the scope check merely to make an outside path work.
 
@@ -801,7 +1227,7 @@ ATLAS_ALLOWED_DIRECTORIES=workspace;C:\Users\vixky\Documents\Approved-ATLAS-File
 
 ---
 
-### File Exceeds Read Limit
+## File Exceeds Read Limit
 
 Increase:
 
@@ -815,7 +1241,7 @@ The current tool supports UTF-8 text files only.
 
 ---
 
-### Content Exceeds Write Limit
+## Content Exceeds Write Limit
 
 Increase:
 
@@ -827,9 +1253,9 @@ only when the larger write is expected.
 
 ---
 
-### Invalid Integer Setting
+## Invalid Integer Setting
 
-These settings must contain only integers:
+These settings must contain integer values:
 
 ```text
 ATLAS_LOG_MAX_BYTES
@@ -852,7 +1278,7 @@ ATLAS_FILESYSTEM_MAX_READ_BYTES=one-million
 
 ---
 
-### Empty Allowed Directories
+## Empty Allowed Directories
 
 This is invalid:
 
@@ -870,7 +1296,7 @@ ATLAS_ALLOWED_DIRECTORIES=workspace
 
 ---
 
-## Configuration Validation
+# Configuration Validation
 
 ATLAS validates configuration during startup.
 
@@ -886,9 +1312,18 @@ Examples of invalid configuration include:
 
 Startup stops safely when required configuration is invalid.
 
+Agent startup depends on valid:
+
+- Provider configuration
+- Tool registration
+- Permission-service construction
+- Filesystem-service construction
+
+The current agent does not add separate startup settings.
+
 ---
 
-## Security Checklist
+# Security Checklist
 
 Before pushing code:
 
@@ -908,6 +1343,8 @@ The following must not appear in staged changes:
 - Runtime logs
 - User workspace files
 - Private document contents
+- Model prompt transcripts
+- Complete agent conversation history
 
 Review staged changes:
 
@@ -925,7 +1362,7 @@ The safe `.env.example` file should contain empty or placeholder secrets only.
 
 ---
 
-## Configuration Reference
+# Configuration Reference
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -942,9 +1379,11 @@ The safe `.env.example` file should contain empty or placeholder secrets only.
 | `ATLAS_FILESYSTEM_MAX_READ_BYTES` | `1000000` | Limit text-file reads |
 | `ATLAS_FILESYSTEM_MAX_WRITE_CHARACTERS` | `1000000` | Limit text-file writes |
 
+There are currently no separate agent-specific environment variables.
+
 ---
 
-## Summary
+# Summary
 
 ATLAS configuration is designed to be:
 
@@ -954,5 +1393,8 @@ ATLAS configuration is designed to be:
 - Testable
 - Secure by default
 - Easy to change without modifying source code
+- Shared consistently by explicit commands and agent-selected actions
 
-The v0.9.0 filesystem settings extend this design by making local file access explicit, scoped, and configurable.
+Version 1.0.0 builds the agent foundation on top of the existing provider, persistence, logging, permission, tool, and filesystem configuration.
+
+The agent does not weaken or replace existing security settings. Every model-selected action remains subject to the same validation, permission, confirmation, and scoped-resource boundaries as an explicit command.
