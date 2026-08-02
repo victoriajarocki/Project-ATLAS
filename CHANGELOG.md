@@ -14,14 +14,57 @@ The project follows semantic versioning:
 
 ### Planned
 
-- Multi-step agent execution
-- Replanning after tool results
-- Agent step limits
-- Automatic conversation titles
-- Semantic memory retrieval
-- Web research tools
-- Improved deterministic action routing
-- Better user-facing tool-result formatting
+#### Response Performance
+
+- Profile end-to-end ATLAS request latency
+- Measure first-token latency
+- Measure total-response latency
+- Measure model-generation speed
+- Add structured timing for major request stages
+- Create repeatable performance benchmarks
+- Add performance regression tests
+
+#### Streaming
+
+- Add streamed Ollama responses
+- Display model output before generation is complete
+- Preserve compatibility with non-streaming providers
+- Support request interruption and cancellation
+- Prevent partial reasoning or structured decision output from reaching the user
+
+#### Prompt and Context Optimization
+
+- Measure agent prompt size
+- Reduce repeated agent instructions
+- Reduce unnecessary tool-catalog overhead
+- Add token-aware conversation-context limits
+- Avoid injecting irrelevant conversation history
+- Avoid injecting irrelevant persistent memories
+- Add configurable response-length limits
+
+#### Provider Optimization
+
+- Reuse Ollama HTTP connections
+- Optimize Ollama keep-alive behavior
+- Reduce first-request warm-up time
+- Benchmark alternative local models
+- Compare model latency, quality, and memory use
+- Add request timeouts and graceful cancellation
+
+#### Deterministic Fast Paths
+
+- Add deterministic calculator routing
+- Add deterministic current-time routing
+- Evaluate deterministic workspace-listing routing
+- Avoid unnecessary model calls for unambiguous requests
+- Preserve validation, permission evaluation, and conversation storage
+
+#### Documentation
+
+- Document baseline latency measurements
+- Document performance benchmark procedures
+- Document before-and-after optimization results
+- Update configuration guidance for performance-related settings
 
 ---
 
